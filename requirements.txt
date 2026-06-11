@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+httpx>=0.24.0
+anthropic>=0.3.0
+python-docx>=0.8.11

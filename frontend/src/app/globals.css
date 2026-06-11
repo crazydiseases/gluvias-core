@@ -1,0 +1,16 @@
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 0, 0, 0;
+  --background-end-rgb: 0, 0, 0;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: black;
+  /* Gill Sans font stack */
+  font-family: "Gill Sans", "Gill Sans MT", Calibri, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+* {
+  font-family: "Gill Sans", "Gill Sans MT", Calibri, sans-serif !important;
+}
