@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLUVIAS // Core Intelligence Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+        body { font-family: 'JetBrains Mono', monospace; background-color: #0d0f12; }
+        .glow-border { box-shadow: 0 0 15px rgba(34, 197, 94, 0.1); }
+    </style>
+</head>
+<body class="text-gray-300 min-h-screen flex flex-col selection:bg-green-500 selection:text-black">
+
+    <header class="border-b border-gray-800 bg-[#11141a] px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="h-3 w-3 rounded-full bg-green-500 animate-pulse"></div>
+            <h1 class="text-white font-bold tracking-widest text-lg">GLUVIAS // CORE WORKSPACE</h1>
+        </div>
+        <div class="text-xs text-gray-500 font-mono">SYSTEM FRAMEWORK V2.6 // STATUS: OPERATIONAL</div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+        
+        <div class="flex space-x-2 border-b border-gray-800 pb-px">
+            <button onclick="switchTab('company')" id="tab-btn-company" class="px-5 py-2.5 text-xs font-semibold tracking-wider uppercase border-t-2 border-x border-green-500 text-green-400 bg-[#11141a] rounded-t transition-all">
+                🏢 Corporate Intelligence
+            </button>
+            <button onclick="switchTab('planning')" id="tab-btn-planning" class="px-5 py-2.5 text-xs font-semibold tracking-wider uppercase border-t-2 border-transparent text-gray-500 hover:text-gray-300 bg-transparent rounded-t transition-all">
+                🗺️ Planning Applications
+            </button>
+        </div>
+
+        <div id="section-company" class="space-y-6">
+            <div class="bg-[#11141a] border border-gray-800 rounded p-6 glow-border">
+                <h2 class="text-sm font-bold text-white tracking-wider uppercase mb-4">Registry Entity Search</h2>
+                <div class="flex space-x-3">
+                    <input type="text" id="company-query" placeholder="ENTER COMPANY NAME OR CRN..." class="flex-1 bg-[#0d0f12] border border-gray-700 rounded px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-green-500 transition-all">
+                    <button onclick="executeCompanySearch()" class="bg-green-600 hover:bg-green-500 text-black font-bold px-6 py-3 rounded text-xs tracking-widest uppercase transition-all">
+                        RUN DISCOVERY SCAN
+                    </button>
+                </div>
+                <div id="company-candidates" class="mt-4 space-y-2 hidden"></div>
+            </div>
+
+            <div id="intelligence-yield" class="grid grid-cols-1 lg:grid-cols-3 gap-6 hidden">
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-[#11141a] border border-gray-800 rounded p-5">
+                        <h3 class="text-xs font-bold text-gray-400 tracking-wider uppercase mb-3">Verified Profile Metadata</h3>
+                        <div id="fact-body" class="space-y-3 text-xs font-mono"></div>
+                    </div>
+                    <div class="bg-[#11141a] border border-gray-800 rounded p-5">
+                        <h3 class="text-xs font-bold text-gray-400 tracking-wider uppercase mb-3">Statutory Document Vault</h3>
+                        <div id="docs-body" class="space-y-2 text-xs"></div>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-[#11141a] border border-gray-800 rounded p-6 flex flex-col">
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
+                        <h3 class="text-xs font-bold text-white tracking-wider uppercase">Synthesized Executive Risk Dossier</h3>
+                        <button onclick="exportToDocx()" class="text-xs text-green-400 hover:underline">📥 EXPORT MS WORD (.DOCX)</button>
+                    </div>
+                    <div id="report-body" class="prose prose-invert max-w-none text-sm leading-relaxed font-sans space-y-3 whitespace-pre-line text-gray-300"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-planning" class="space-y-6 hidden">
+            <div class="bg-[#11141a] border border-gray-800 rounded p-6 glow-border">
+                <h2 class="text-sm font-bold text-white tracking-wider uppercase mb-4">Geographic Planning Application Index</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <input type="text" id="planning-postcode" placeholder="ENTER TARGET POSTCODE (E.G., TR10 9EZ)..." class="w-full bg-[#0d0f12] border border-gray-700 rounded px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-green-500 transition-all">
+                    </div>
+                    <div>
+                        <button onclick="executePlanningSearch()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded text-xs tracking-widest uppercase transition-all">
+                            SCAN LOCAL AREA
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="planning-yield" class="bg-[#11141a] border border-gray-800 rounded p-6 hidden">
+                <h3 class="text-xs font-bold text-white tracking-wider uppercase mb-4 pb-2 border-b border-gray-800">Local Authority Submissions Located</h3>
+                <div id="planning-results-body" class="space-y-4"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let currentReportTitle = "Corporate_Intelligence";
+        let currentReportContent = "";
+
+        function switchTab(tab) {
+            const cBtn = document.getElementById('tab-btn-company');
+            const pBtn = document.getElementById('tab-btn-planning');
+            const cSec = document.getElementById('section-company');
+            const pSec = document.getElementById('section-planning');
+
+            if (tab === 'company') {
+                cBtn.className = "px-5 py-2.5 text-xs font-semibold tracking-wider uppercase border-t-2 border-x border-green-500 text-green-400 bg-[#11141a] rounded-t transition-all";
+                pBtn.className = "px-5 py-2.5 text-xs font-semibold tracking-wider uppercase border-t-2 border-transparent text-gray-500 hover:text-gray-300 bg-transparent rounded-t transition-all";
+                cSec.classList.remove('hidden');
+                pSec.classList.add('hidden');
+            } else {
+                pBtn.className = "px-5 py-2.5 text-xs font-semibold tracking-wider uppercase border-t-2 border-x border-blue-500 text-blue-400 bg-[#11141a] rounded-t transition-all";
+                cBtn.className = "px-5 py-2.5 text-xs font-semibold tracking-wider uppercase border-t-2 border-transparent text-gray-500 hover:text-gray-300 bg-transparent rounded-t transition-all";
+                pSec.classList.remove('hidden');
+                cSec.classList.add('hidden');
+            }
+        }
+
+        async function executeCompanySearch() {
+            const q = document.getElementById('company-query').value.strip ? document.getElementById('company-query').value.strip() : document.getElementById('company-query').value;
+            if(!q) return;
+            const container = document.getElementById('company-candidates');
+            container.innerHTML = `<div class="text-xs text-gray-500 font-mono py-2">CONNECTING TO REGISTRY CHANNELS...</div>`;
+            container.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`/api/company-search?q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                if(!data.candidates || data.candidates.length === 0) {
+                    container.innerHTML = `<div class="text-xs text-red-400 font-mono py-2">NO CORPORATE BODY MATCHES IDENTIFIED.</div>`;
+                    return;
+                }
+                container.innerHTML = data.candidates.map(c => `
+                    <div onclick="fetchIntelligence('${c.crn}')" class="p-3 bg-[#0d0f12] border border-gray-800 hover:border-green-500 rounded flex justify-between items-center cursor-pointer transition-all">
+                        <div>
+                            <div class="text-xs font-bold text-white font-mono">${c.name}</div>
+                            <div class="text-[10px] text-gray-500 font-mono mt-1">CRN: ${c.crn}</div>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded font-mono ${c.status === 'ACTIVE' ? 'bg-green-950 text-green-400 border border-green-800' : 'bg-red-950 text-red-400 border border-red-800'}">${c.status}</span>
+                    </div>
+                `).join('');
+            } catch(e) {
+                container.innerHTML = `<div class="text-xs text-red-400 font-mono py-2">SCAN FAULT: ${e.message}</div>`;
+            }
+        }
+
+        async function fetchIntelligence(crn) {
+            document.getElementById('company-candidates').classList.add('hidden');
+            const yieldArea = document.getElementById('intelligence-yield');
+            yieldArea.classList.remove('hidden');
+            
+            document.getElementById('fact-body').innerHTML = `<div class="text-gray-500 animate-pulse">EXTRACTING DATA RECORDS...</div>`;
+            document.getElementById('docs-body').innerHTML = `<div class="text-gray-500 animate-pulse">SOURCING STORAGE LINKS...</div>`;
+            document.getElementById('report-body').innerHTML = `<div class="text-gray-500 animate-pulse">CLAUDE SYNTHESIZING STRUCTURAL NARRATIVE BRIEFING...</div>`;
+
+            try {
+                const res = await fetch(`/api/company-intelligence?crn=${crn}`);
+                if (!res.ok) throw new Error("Pipeline compilation error.");
+                const data = await res.json();
+                
+                // Populate Fact Table Elements
+                document.getElementById('fact-body').innerHTML = `
+                    <div class="border-b border-gray-800 pb-1"><span class="text-gray-500 block">ENTITY:</span> <span class="text-white font-bold">${data.fact_table.name}</span></div>
+                    <div class="border-b border-gray-800 pb-1"><span class="text-gray-500 block">NUMBER:</span> <span class="text-green-400">${data.fact_table.crn}</span></div>
+                    <div class="border-b border-gray-800 pb-1"><span class="text-gray-500 block">STATUS:</span> <span class="text-white">${data.fact_table.status}</span></div>
+                    <div class="border-b border-gray-800 pb-1"><span class="text-gray-500 block">TIMELINE:</span> <span class="text-white">${data.fact_table.age}</span></div>
+                    <div><span class="text-gray-500 block">REGISTERED SEAT:</span> <span class="text-gray-400 text-[11px]">${data.fact_table.address}</span></div>
+                `;
+
+                // Populate Document Links
+                if(data.documents && data.documents.length > 0) {
+                    document.getElementById('docs-body').innerHTML = data.documents.map(d => `
+                        <a href="${d.url}" target="_blank" class="block p-2 bg-[#0d0f12] border border-gray-800 hover:border-gray-700 rounded text-gray-300 hover:text-white transition-all">
+                            <div class="font-bold font-mono text-[11px] text-green-400">${d.date} // ${d.type}</div>
+                            <div class="text-[10px] text-gray-500 truncate mt-0.5">${d.description}</div>
+                        </a>
+                    `).join('');
+                } else {
+                    document.getElementById('docs-body').innerHTML = `<div class="text-gray-600 text-xs font-mono">No direct image filings mapped.</div>`;
+                }
+
+                // Render Narrative Matrix
+                currentReportTitle = data.fact_table.name.replace(/\s+/g, '_');
+                currentReportContent = data.intelligence_report;
+                document.getElementById('report-body').innerText = data.intelligence_report;
+
+            } catch (e) {
+                document.getElementById('report-body').innerHTML = `<div class="text-red-400 font-mono text-xs">CRITICAL DATA EXTRACTION FAULT: ${e.message}</div>`;
+            }
+        }
+
+        async function executePlanningSearch() {
+            const postcode = document.getElementById('planning-postcode').value;
+            if(!postcode) return;
+            const yieldArea = document.getElementById('planning-yield');
+            const body = document.getElementById('planning-results-body');
+            
+            yieldArea.classList.remove('hidden');
+            body.innerHTML = `<div class="text-xs text-gray-500 font-mono animate-pulse">INTERROGATING LOCAL GOVERNMENT APPLICATION INDICES...</div>`;
+
+            try {
+                const res = await fetch('/api/planning-search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ postcode: postcode, radius_meters: 500 })
+                });
+                const data = await res.json();
+                
+                if(!data.applications || data.applications.length === 0) {
+                    body.innerHTML = `<div class="text-xs text-gray-500 font-mono">No recent structural applications logged within this radius sector area.</div>`;
+                    return;
+                }
+
+                body.innerHTML = data.applications.map(app => `
+                    <div class="p-4 bg-[#0d0f12] border border-gray-800 rounded space-y-2">
+                        <div class="flex justify-between items-start">
+                            <div class="text-xs font-bold text-blue-400 font-mono">${app.reference}</div>
+                            <span class="text-[9px] px-2 py-0.5 rounded font-mono bg-blue-950 text-blue-400 border border-blue-900">${app.status}</span>
+                        </div>
+                        <div class="text-xs font-mono text-white">${app.address}</div>
+                        <p class="text-xs text-gray-400 font-sans leading-relaxed">${app.description}</p>
+                        <div class="text-[10px] text-gray-500 font-mono pt-1">SUBMITTED RECORD DATE: ${app.lodged_date}</div>
+                    </div>
+                `).join('');
+            } catch(e) {
+                body.innerHTML = `<div class="text-xs text-red-400 font-mono">INDEX SEARCH ERROR: ${e.message}</div>`;
+            }
+        }
+
+        async function exportToDocx() {
+            if(!currentReportContent) return;
+            try {
+                const res = await fetch('/api/export-docx', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: currentReportTitle, content: currentReportContent })
+                });
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `GLUVIAS_DOSSIER_${currentReportTitle}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch(e) {
+                alert("Dossier compilation download error.");
+            }
+        }
+    </script>
+</body>
+</html>

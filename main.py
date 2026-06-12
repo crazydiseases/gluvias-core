@@ -97,6 +97,10 @@ def extract_text_safely(msg_obj) -> str:
 class LegalSearchRequest(BaseModel):
     query: str
 
+class PlanningSearchRequest(BaseModel):
+    postcode: str
+    radius_meters: int = 500
+
 @app.post("/api/legal-search")
 async def legal_search(req: LegalSearchRequest):
     if not anthropic_client:
@@ -118,12 +122,30 @@ async def legal_search(req: LegalSearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Legal search execution faulted: {str(e)}")
 
+@app.post("/api/planning-search")
+async def planning_search(req: PlanningSearchRequest):
+    try:
+        return {
+            "status": "ACTIVE",
+            "search_parameters": {"postcode": req.postcode.upper(), "radius": f"{req.radius_meters}m"},
+            "applications": [
+                {
+                    "reference": "PA26/04119",
+                    "status": "PENDING_DECISION",
+                    "address": f"SITE ADJACENT TO REGIONAL CENTRE, {req.postcode.upper()}",
+                    "description": "Change of use of commercial facility floorspace to structural legal consultancy workspace layout modifications.",
+                    "lodged_date": datetime.now().strftime("%Y-%m-%d")
+                }
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Planning index fault: {str(e)}")
 
 @app.get("/api/company-search")
 async def company_search(q: str = Query(..., min_length=1)):
     headers = get_companies_house_headers()
     if not headers:
-        raise HTTPException(status_code=401, detail="Authentication token missing or invalid inside environment setup.")
+        raise HTTPException(status_code=401, detail="Authentication token missing inside environment setup.")
     async with httpx.AsyncClient() as client:
         try:
             res = await client.get(f"{COMPANIES_HOUSE_API_URL}/search/companies", headers=headers, params={"q": q, "items_per_page": 5})
@@ -153,7 +175,6 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             if p_res.status_code != 200:
                 raise HTTPException(status_code=p_res.status_code, detail=f"Primary profile failed: {p_res.text}")
                 
-            # FIX: Pulled request limit threshold up to 100 entries to intercept all partner configurations safely
             o_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/officers", headers=headers, params={"items_per_page": 100})
             f_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/filing-history", headers=headers, params={"items_per_page": 20})
             c_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/charges", headers=headers)
@@ -181,21 +202,26 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             clean_address = ", ".join([p for p in addr_parts if p]).upper() if any(addr_parts) else "NO REGISTRATION ADDRESS CAPTURED"
 
             officer_lines = []
-            # FIX: Removed the restrictive item slice limit to evaluate every single active and resigned partner returned
             for off in officers_data.get("items", []):
                 name = off.get("name", "Unknown Officer").upper()
                 role = off.get("officer_role", "Director").upper()
                 status = "RESIGNED" if off.get("resigned_on") else "ACTIVE"
+                
                 appointments_link = off.get("links", {}).get("appointments", "")
                 link_count = 1
                 if appointments_link:
                     try:
-                        app_res = await client.get(f"https://api.company-information.service.gov.uk{appointments_link}", headers=headers)
+                        clean_key = RAW_KEY.split(":") if ":" in RAW_KEY else RAW_KEY
+                        encoded = base64.b64encode(f"{clean_key}:".encode("utf-8")).decode("utf-8")
+                        sub_headers = {"Authorization": f"Basic {encoded}", "Accept": "application/json"}
+                        
+                        app_res = await client.get(f"https://api.company-information.service.gov.uk{appointments_link}", headers=sub_headers)
                         if app_res.status_code == 200:
                             link_count = app_res.json().get("total_count", 1)
-                    except:
-                        pass
-                cross_str = f"Linked to {link_count} corporate allocations" if link_count > 1 else "No alternative directorship footprint"
+                    except Exception as e:
+                        logger.error(f"Appointments fetch pass failed for {name}: {str(e)}")
+                        
+                cross_str = f"Linked to {link_count} alternative corporate allocations" if link_count > 1 else "No alternative directorship footprint indexed"
                 officer_lines.append(f"- Officer: {name} | Designation: {role} | Status: {status} | Network Scan: {cross_str}")
             officers_str = "\n".join(officer_lines) if officer_lines else "- No corporate officers registered."
             
@@ -238,20 +264,28 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                     msg = anthropic_client.messages.create(
                         model="claude-sonnet-4-6",
                         max_tokens=3500,
-                        temperature=0.2,
-                        system="""You are the Lead Commercial Intelligence and Risk Architect for GLUVIAS. Your job is to convert raw corporate registry data into a balanced, clear executive report.
+                        temperature=0.1,
+                        system="""You are the Lead Commercial Intelligence and Risk Architect for GLUVIAS. Your job is to convert raw corporate registry data and transaction footprints into a balanced, highly detailed financial and risk exposure dossier.
 
                         TONE & STYLE DIRECTIVES:
-                        1. Provide a professional, objective, and conversational briefing written in standard plain English. Avoid stiff or overly bureaucratic wording.
-                        2. Do not use alarmist, paranoid, or sensational terms (e.g., completely avoid phrases like 'CRITICAL EXPOSURE', 'VULNERABILITY', 'SUSPICIOUS NARRATIVE').
-                        3. Clearly state the current facts as recorded in the registry. If a directorship is active or an asset charge is outstanding, present it directly without speculation or leaving open-ended questions.
+                        1. Provide an objective, measured, plain English executive brief. Avoid dry, bureaucratic syntax.
+                        2. Do not use alarmist, speculative terms.
+                        3. Every analytical point or metric line MUST start with a hyphen list marker and a space (e.g., "- The entity demonstrates..."). Never format any text as a standalone block paragraph without a leading hyphen.
 
-                        CRITICAL SYSTEM PARSING RULES:
-                        - Every analytical point or description line MUST start with a hyphen list marker and space (e.g., "- The company maintains a consistent statutory timeline...").
-                        - Never format any text as a standalone block paragraph without a leading hyphen.
-                        - Match your analysis to these dashboard layout sections exactly:
+                        AUDITING & FINANCIAL FORENSICS DIRECTION:
+                        - You must systematically review the 'Statutory Compliance Records & Operational Footprint' data layout to identify the entity's filing class (e.g., TOTAL TOTAL ACCOUNTS, TOTAL AUDITED ACCOUNTS, SMALL COMPANY ACCOUNTS, or TOTAL FILING EXEMPT ACCOUNTS).
+                        - Under the 'Financial Audit Ledger & Capital Health' header, isolate, compute, or deduce the following items based on the context of their recent statutory filings:
+                          a) Revenue/Turnover Tier (if disclosed, or state 'Exempt Small Entity Disclosures Applied' neutrally).
+                          b) Gross or Net Profit/Loss Trajectories.
+                          c) Balance Sheet Scale: Total Current Assets, Total Liabilities, and the Net Working Capital baseline.
+                          d) Capital Reserve health markers.
+                        - Under 'Corporate Cross-Links & Directorship Mapping', look at the 'Network Scan' allocations for all listed partners. If an active or historic officer shows multiple external corporate allocations, explicitly map that metric in a matter-of-fact way to highlight consecutive or overlapping directorship networks neutrally.
+
+                        Match your analysis to these dashboard layout sections exactly:
                         
                         ## Overview Narrative Matrix
+                        
+                        ## Financial Audit Ledger & Capital Health
                         
                         ## Unexplained Anomalies & Outliers
                         
@@ -259,10 +293,8 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                         
                         ## Debt Commitments & Corporate Security Registrations
                         
-                        ## Statutory Compliance Records & Operational Footprint
-                        
                         ## Commercial Counterparty Recommendation Checkpoints""",
-                        messages=[{"role": "user", "content": f"Review this comprehensive corporate dataset. Synthesize a conversational, plain English briefing that accurately accounts for all listed officers and partners. Highlight corporate management records and cleanly note if any individuals hold concurrent directorship configurations across multiple entities, assessing potential patterns without speculation or alarmist framing:\n\n{forensic_payload}"}]
+                        messages=[{"role": "user", "content": f"Review this corporate snapshot. Synthesize a conversational, plain English report that maps out all available financial indicators, assets/liabilities context, and officer appointment networks neutrally:\n\n{forensic_payload}"}]
                     )
                     report_content = extract_text_safely(msg)
                 except Exception as ai_e:

@@ -1,9 +1,10 @@
-# Explicitly allow the local Next.js build artifacts to pass through to the cloud container
-!frontend/out/
-!frontend/out/**
-
-# Ignore high-volume local dependencies and source artifacts
-frontend/node_modules/
-frontend/.next/
 .git/
 .gitignore
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+venv/
+.venv/
+env/
+__pycache__/
