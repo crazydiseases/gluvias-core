@@ -3,22 +3,15 @@ import io
 import re
 import base64
 import logging
-import mimetypes
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse, Response, RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse, HTMLResponse, Response, RedirectResponse
 from pydantic import BaseModel
 import httpx
 from anthropic import Anthropic
 from docx import Document
-
-mimetypes.init()
-mimetypes.add_type("text/css", ".css")
-mimetypes.add_type("application/javascript", ".js")
-mimetypes.add_type("image/svg+xml", ".svg")
-mimetypes.add_type("application/json", ".json")
+import uvicorn
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("gluvias-core")
@@ -32,20 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FRONTEND_OUT = os.path.join(BASE_DIR, "frontend", "out")
-if not os.path.exists(FRONTEND_OUT):
-    FRONTEND_OUT = os.path.abspath("frontend/out")
-
-if os.path.exists(FRONTEND_OUT):
-    _next_path = os.path.join(FRONTEND_OUT, "_next")
-    if os.path.exists(_next_path):
-        app.mount("/_next", StaticFiles(directory=_next_path), name="next-system-assets")
-
-@app.get("/")
-async def root_direct():
-    return RedirectResponse(url="/dashboard", status_code=307)
 
 COMPANIES_HOUSE_API_URL = "https://api.company-information.service.gov.uk"
 RAW_KEY = os.getenv("COMPANIES_HOUSE_KEY", "").strip()
@@ -69,29 +48,11 @@ if ANTHROPIC_API_KEY:
         logger.error(f"Failed to load Anthropic engine: {str(e)}")
 
 def extract_text_safely(msg_obj) -> str:
-    if msg_obj is None:
-        return ""
+    if msg_obj is None: return ""
     if hasattr(msg_obj, "content") and isinstance(msg_obj.content, list):
         for block in msg_obj.content:
-            if hasattr(block, "text"):
-                return str(block.text)
-            if isinstance(block, dict) and "text" in block:
-                return str(block["text"])
-    if hasattr(msg_obj, "text"):
-        return str(msg_obj.text)
-    if isinstance(msg_obj, dict):
-        if "content" in msg_obj and isinstance(msg_obj["content"], list):
-            for block in msg_obj["content"]:
-                if isinstance(block, dict) and "text" in block:
-                    return str(block["text"])
-        if "text" in msg_obj:
-            return str(msg_obj["text"])
-    if isinstance(msg_obj, list) and len(msg_obj) > 0:
-        first = msg_obj
-        if hasattr(first, "text"):
-            return str(first.text)
-        if isinstance(first, dict) and "text" in first:
-            return str(first["text"])
+            if hasattr(block, "text"): return str(block.text)
+    if hasattr(msg_obj, "text"): return str(msg_obj.text)
     return str(msg_obj)
 
 class LegalSearchRequest(BaseModel):
@@ -101,26 +62,9 @@ class PlanningSearchRequest(BaseModel):
     postcode: str
     radius_meters: int = 500
 
-@app.post("/api/legal-search")
-async def legal_search(req: LegalSearchRequest):
-    if not anthropic_client:
-        raise HTTPException(status_code=500, detail="Anthropic Key Missing in Environment Config.")
-    try:
-        msg = anthropic_client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4000,
-            temperature=0.2,
-            system="""You are the GLUVIAS Lead Legal Intelligence Architect. Structure your analytical research brief cleanly using these markdown headers exactly:
-            ## Executive Legal Summary
-            ## Statutory Framework & Legislation Analysis
-            ## Relevant Civil Procedure Rules (CPR) Provisions
-            ## Leading Jurisprudence & Judicial Precedents
-            ## Strategic Litigation Recommendations""",
-            messages=[{"role": "user", "content": f"Execute deep legal research on the following parameters:\n\n{req.query}"}]
-        )
-        return {"intelligence_report": extract_text_safely(msg)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Legal search execution faulted: {str(e)}")
+@app.get("/")
+async def root_direct():
+    return RedirectResponse(url="/dashboard", status_code=307)
 
 @app.post("/api/planning-search")
 async def planning_search(req: PlanningSearchRequest):
@@ -144,219 +88,183 @@ async def planning_search(req: PlanningSearchRequest):
 @app.get("/api/company-search")
 async def company_search(q: str = Query(..., min_length=1)):
     headers = get_companies_house_headers()
-    if not headers:
-        raise HTTPException(status_code=401, detail="Authentication token missing inside environment setup.")
     async with httpx.AsyncClient() as client:
-        try:
-            res = await client.get(f"{COMPANIES_HOUSE_API_URL}/search/companies", headers=headers, params={"q": q, "items_per_page": 5})
-            if res.status_code != 200:
-                raise HTTPException(status_code=res.status_code, detail=f"Companies House Registry rejected lookups: {res.text}")
-            data = res.json()
-            items = data.get("items", []) if isinstance(data, dict) else []
-            candidates = []
-            for item in items[:5]:
-                candidates.append({
-                    "name": item.get("title", "Unknown Corporate Body").upper(),
-                    "crn": item.get("company_number", ""),
-                    "status": item.get("company_status", "Active").upper()
-                })
-            return {"candidates": candidates}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Query Processing fault: {str(e)}")
+        res = await client.get(f"{COMPANIES_HOUSE_API_URL}/search/companies", headers=headers, params={"q": q, "items_per_page": 5})
+        items = res.json().get("items", []) if res.status_code == 200 else []
+        return {"candidates": [{"name": i.get("title", "Unknown").upper(), "crn": i.get("company_number", ""), "status": i.get("company_status", "Active").upper()} for i in items]}
 
 @app.get("/api/company-intelligence")
 async def company_intelligence(crn: str = Query(..., min_length=1)):
     headers = get_companies_house_headers()
-    if not headers:
-        raise HTTPException(status_code=401, detail="Authentication token missing inside environment setup.")
     async with httpx.AsyncClient() as client:
-        try:
-            p_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}", headers=headers)
-            if p_res.status_code != 200:
-                raise HTTPException(status_code=p_res.status_code, detail=f"Primary profile failed: {p_res.text}")
-                
-            o_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/officers", headers=headers, params={"items_per_page": 100})
-            f_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/filing-history", headers=headers, params={"items_per_page": 20})
-            c_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/charges", headers=headers)
-            psc_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/persons-with-significant-control", headers=headers)
+        p_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}", headers=headers)
+        o_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/officers", headers=headers)
+        f_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/filing-history", headers=headers, params={"items_per_page": 15})
+        
+        profile = p_res.json()
+        comp_name = profile.get('company_name', 'Unknown').upper()
+        
+        officer_lines = []
+        for off in o_res.json().get("items", []) if o_res.status_code == 200 else []:
+            name = off.get("name", "Unknown").upper()
             
-            profile = p_res.json()
-            officers_data = o_res.json() if o_res.status_code == 200 else {}
-            filings_data = f_res.json() if f_res.status_code == 200 else {}
-            charges_data = c_res.json() if c_res.status_code == 200 else {}
-            psc_data = psc_res.json() if psc_res.status_code == 200 else {}
-            
-            comp_name = profile.get('company_name', 'Unknown Entity').upper()
-            inc_date_str = profile.get('date_of_creation', 'Unknown')
-            age_display = "UNKNOWN TIMELINE"
-            if inc_date_str != 'Unknown':
+            dob_dict = off.get("date_of_birth", {})
+            dob_str = "DOB NOT DISCLOSED"
+            if dob_dict.get("month") and dob_dict.get("year"):
+                months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+                m_idx = int(dob_dict.get("month")) - 1
+                m_label = months[m_idx] if 0 <= m_idx < 12 else str(dob_dict.get("month"))
+                dob_str = f"DOB: {m_label} {dob_dict.get('year')}"
+
+            appointments_link = off.get("links", {}).get("appointments", "")
+            link_count = 1
+            if appointments_link:
                 try:
-                    inc_date = datetime.strptime(inc_date_str, "%Y-%m-%d")
-                    years = datetime.now().year - inc_date.year
-                    age_display = f"{years} YEARS OLD ({inc_date.strftime('%d %B %Y').upper()})"
-                except:
-                    age_display = f"INCORPORATED ON {inc_date_str.upper()}"
-
-            addr_dict = profile.get('registered_office_address', {})
-            addr_parts = [addr_dict.get('address_line_1'), addr_dict.get('address_line_2'), addr_dict.get('locality'), addr_dict.get('postal_code')]
-            clean_address = ", ".join([p for p in addr_parts if p]).upper() if any(addr_parts) else "NO REGISTRATION ADDRESS CAPTURED"
-
-            officer_lines = []
-            for off in officers_data.get("items", []):
-                name = off.get("name", "Unknown Officer").upper()
-                role = off.get("officer_role", "Director").upper()
-                status = "RESIGNED" if off.get("resigned_on") else "ACTIVE"
-                
-                appointments_link = off.get("links", {}).get("appointments", "")
-                link_count = 1
-                if appointments_link:
-                    try:
-                        clean_key = RAW_KEY.split(":") if ":" in RAW_KEY else RAW_KEY
-                        encoded = base64.b64encode(f"{clean_key}:".encode("utf-8")).decode("utf-8")
-                        sub_headers = {"Authorization": f"Basic {encoded}", "Accept": "application/json"}
-                        
-                        app_res = await client.get(f"https://api.company-information.service.gov.uk{appointments_link}", headers=sub_headers)
-                        if app_res.status_code == 200:
-                            link_count = app_res.json().get("total_count", 1)
-                    except Exception as e:
-                        logger.error(f"Appointments fetch pass failed for {name}: {str(e)}")
-                        
-                cross_str = f"Linked to {link_count} alternative corporate allocations" if link_count > 1 else "No alternative directorship footprint indexed"
-                officer_lines.append(f"- Officer: {name} | Designation: {role} | Status: {status} | Network Scan: {cross_str}")
-            officers_str = "\n".join(officer_lines) if officer_lines else "- No corporate officers registered."
+                    clean_key = RAW_KEY.split(":") if ":" in RAW_KEY else RAW_KEY
+                    encoded = base64.b64encode(f"{clean_key}:".encode("utf-8")).decode("utf-8")
+                    app_res = await client.get(f"https://api.company-information.service.gov.uk{appointments_link}", headers={"Authorization": f"Basic {encoded}"})
+                    if app_res.status_code == 200: link_count = app_res.json().get("total_count", 1)
+                except: pass
+            officer_lines.append(f"- Officer: {name} ({dob_str}) | Network Scan: Linked to {link_count} corporate allocations")
             
-            filing_lines = []
-            ui_docs_list = []
-            for f in filings_data.get("items", []):
-                f_date = f.get("date", "N/A")
-                f_desc = f.get("description", "System Compliance Log Event")
-                f_cat = f.get("category", "General")
-                clean_desc = f_desc.replace("-", " ").upper()
-                filing_lines.append(f"- Date: {f_date} | Category: {f_cat.upper()} | Update: {clean_desc}")
+        filing_lines = []
+        for f in f_res.json().get("items", []) if f_res.status_code == 200 else []:
+            filing_lines.append(f"- Date: {f.get('date')} | Type: {f.get('type','').upper()} | Update: {f.get('description','').upper()}")
+
+        forensic_payload = f"## Overview Narrative Matrix\n- Name: {comp_name}\n- CRN: {crn}\n\n## Corporate Cross-Links & Directorship Mapping\n" + "\n".join(officer_lines) + "\n\n## Statutory Compliance Records & Operational Footprint\n" + "\n".join(filing_lines)
+        report_content = forensic_payload
+
+        if anthropic_client:
+            msg = anthropic_client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=3500,
+                temperature=0.1,
+                system="""You are the Lead Commercial Risk Architect for GLUVIAS. Process the company records into a detailed plain English dossier.
                 
-                doc_link = f.get("links", {}).get("document_metadata", "")
-                if doc_link and len(ui_docs_list) < 6:
-                    doc_id = doc_link.split("/")[-1]
-                    download_url = f"https://document-api.company-information.service.gov.uk/document/{doc_id}/content"
-                    ui_docs_list.append({
-                        "date": f_date,
-                        "type": f.get("type", "PDF").upper(),
-                        "description": clean_desc,
-                        "url": download_url
-                    })
-            filings_str = "\n".join(filing_lines) if filing_lines else "- No filing history found."
+                CRITICAL IDENTITY & RISK UNBLINDING DIRECTIVES:
+                1. Always display the listed officer's extracted date of birth bracket directly next to their name.
+                2. If you identify any structural anomaly, overlapping directorship footprint, multiple cross-links, or unusual pattern associated with an officer, DO NOT use anonymous language or generic placeholders. You MUST explicitly mention the specific officer by their full name when detailing the concern or pattern.
+                
+                TONE & LIST FORMATTING RULES:
+                - Every single line inside your analytical points MUST begin with a hyphen list marker and a space (e.g. "- The balance sheet...").
+                - Break down the analysis across these exact headers:
+                ## Overview Narrative Matrix
+                ## Financial Audit Ledger & Capital Health
+                ## Corporate Cross-Links & Directorship Mapping
+                ## Debt Commitments & Corporate Security Registrations
+                ## Commercial Counterparty Recommendation Checkpoints""",
+                messages=[{"role": "user", "content": forensic_payload}]
+            )
+            report_content = extract_text_safely(msg)
 
-            charges_str = "- No outstanding secured charges or active debt structures recorded."
-            c_items = charges_data.get("items", [])
-            if c_items:
-                charges_str = "\n".join([f"- Instrument: {c.get('particulars', {}).get('description', 'Corporate Charge')} | Status: {c.get('status').upper()} | Registered: {c.get('delivered_on')}" for c in c_items])
-
-            psc_str = "- No individual distribution blocks indexed."
-            p_items = psc_data.get("items", [])
-            if p_items:
-                psc_str = "\n".join([f"- Holder: {p.get('name').upper()} | Allocation Details: {', '.join(p.get('natures_of_control', [])).upper()}" for p in p_items])
-
-            forensic_payload = f"## Overview Narrative Matrix\n- Legal Entity Name: {comp_name}\n- Company Number: {crn}\n- Registry Status: {profile.get('company_status', 'Active').upper()}\n- Age Profile: {age_display}\n- Office Address: {clean_address}\n\n## Corporate Cross-Links & Directorship Mapping\n{officers_str}\n\n## Persons with Significant Control Matrix\n{psc_str}\n\n## Debt Commitments & Corporate Security Registrations\n{charges_str}\n\n## Statutory Compliance Records & Operational Footprint\n{filings_str}"
-            report_content = forensic_payload
-            
-            if anthropic_client:
-                try:
-                    msg = anthropic_client.messages.create(
-                        model="claude-sonnet-4-6",
-                        max_tokens=3500,
-                        temperature=0.1,
-                        system="""You are the Lead Commercial Intelligence and Risk Architect for GLUVIAS. Your job is to convert raw corporate registry data and transaction footprints into a balanced, highly detailed financial and risk exposure dossier.
-
-                        TONE & STYLE DIRECTIVES:
-                        1. Provide an objective, measured, plain English executive brief. Avoid dry, bureaucratic syntax.
-                        2. Do not use alarmist, speculative terms.
-                        3. Every analytical point or metric line MUST start with a hyphen list marker and a space (e.g., "- The entity demonstrates..."). Never format any text as a standalone block paragraph without a leading hyphen.
-
-                        AUDITING & FINANCIAL FORENSICS DIRECTION:
-                        - You must systematically review the 'Statutory Compliance Records & Operational Footprint' data layout to identify the entity's filing class (e.g., TOTAL TOTAL ACCOUNTS, TOTAL AUDITED ACCOUNTS, SMALL COMPANY ACCOUNTS, or TOTAL FILING EXEMPT ACCOUNTS).
-                        - Under the 'Financial Audit Ledger & Capital Health' header, isolate, compute, or deduce the following items based on the context of their recent statutory filings:
-                          a) Revenue/Turnover Tier (if disclosed, or state 'Exempt Small Entity Disclosures Applied' neutrally).
-                          b) Gross or Net Profit/Loss Trajectories.
-                          c) Balance Sheet Scale: Total Current Assets, Total Liabilities, and the Net Working Capital baseline.
-                          d) Capital Reserve health markers.
-                        - Under 'Corporate Cross-Links & Directorship Mapping', look at the 'Network Scan' allocations for all listed partners. If an active or historic officer shows multiple external corporate allocations, explicitly map that metric in a matter-of-fact way to highlight consecutive or overlapping directorship networks neutrally.
-
-                        Match your analysis to these dashboard layout sections exactly:
-                        
-                        ## Overview Narrative Matrix
-                        
-                        ## Financial Audit Ledger & Capital Health
-                        
-                        ## Unexplained Anomalies & Outliers
-                        
-                        ## Corporate Cross-Links & Directorship Mapping
-                        
-                        ## Debt Commitments & Corporate Security Registrations
-                        
-                        ## Commercial Counterparty Recommendation Checkpoints""",
-                        messages=[{"role": "user", "content": f"Review this corporate snapshot. Synthesize a conversational, plain English report that maps out all available financial indicators, assets/liabilities context, and officer appointment networks neutrally:\n\n{forensic_payload}"}]
-                    )
-                    report_content = extract_text_safely(msg)
-                except Exception as ai_e:
-                    raise HTTPException(status_code=502, detail=f"Anthropic Engine Pipeline Error: {str(ai_e)}")
-
-            anomaly_extract = "The registry data displays standard statutory compliance track records with no outlying structural markers."
-            match = re.search(r"## Unexplained Anomalies & Outliers\s*\n+([^#]+)", report_content, re.IGNORECASE)
-            if match:
-                extracted_text = match.group(1).strip()
-                clean_text = extracted_text.replace("-", "").strip()
-                if len(clean_text) > 10 and "NO MATERIAL" not in clean_text.upper():
-                    anomaly_extract = clean_text[:400] + "..."
-
-            return {
-                "fact_table": {
-                    "name": comp_name,
-                    "crn": crn,
-                    "status": profile.get('company_status', 'Active').upper(),
-                    "age": age_display,
-                    "address": clean_address
-                },
-                "documents": ui_docs_list,
-                "intelligence_report": report_content,       
-                "detected_anomalies": anomaly_extract        
-            }
-        except HTTPException as http_e:
-            raise http_e
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Registry Data pipeline integration failure: {str(e)}")
-
-class ExportRequest(BaseModel):
-    title: str
-    content: str
+        return {
+            "fact_table": {"name": comp_name, "crn": crn, "status": profile.get('company_status','').upper(), "age": "AVAILABLE", "address": "REGISTERED SEAT"},
+            "documents": [],
+            "intelligence_report": report_content,
+            "detected_anomalies": "Standard filing compliance."
+        }
 
 @app.post("/api/export-docx")
-async def export_docx(req: ExportRequest):
+async def export_docx(req: LegalSearchRequest):
     doc = Document()
-    doc.add_heading(req.title.upper(), level=0)
-    for line in req.content.split("\n"):
-        if line.strip(): doc.add_paragraph(line.strip())
+    doc.add_heading("GLUVIAS REPORT", level=0)
+    doc.add_paragraph(req.query)
     file_stream = io.BytesIO()
     doc.save(file_stream)
     file_stream.seek(0)
-    return StreamingResponse(
-        file_stream, 
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename=GLUVIAS_FORENSIC_DOSSIER_{req.title}.docx"}
-    )
+    return StreamingResponse(file_stream, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
-@app.get("/dashboard")
+@app.get("/dashboard", response_class=HTMLResponse)
 async def serve_dashboard():
-    for f in ["dashboard/index.html", "dashboard.html"]:
-        p = os.path.join(FRONTEND_OUT, f)
-        if os.path.exists(p): return FileResponse(p, media_type="text/html")
-    raise HTTPException(status_code=404)
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>GLUVIAS // System Core Console</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap'); body { font-family: 'JetBrains Mono', monospace; background-color: #0d0f12; }</style>
+    </head>
+    <body class="text-gray-300 min-h-screen flex flex-col">
+        <header class="border-b border-gray-800 bg-[#11141a] px-6 py-4 flex justify-between items-center">
+            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // SYSTEM CORE V2.6</h1>
+            <div class="text-[10px] text-green-400">STATUS: ACTIVE</div>
+        </header>
+        
+        <main class="flex-1 max-w-6xl w-full mx-auto p-6 space-y-6">
+            <div class="flex space-x-2 border-b border-gray-800">
+                <button id="t-comp" onclick="switchMode('comp')" class="px-4 py-2 text-xs border-t-2 border-green-500 text-green-400 bg-[#11141a]">🏢 Corporate Intelligence</button>
+                <button id="t-plan" onclick="switchMode('plan')" class="px-4 py-2 text-xs border-t-2 border-transparent text-gray-500">🗺️ Planning Applications</button>
+            </div>
 
-@app.get("/{path:path}")
-async def catch_all(request: Request, path: str):
-    clean = path.strip("/")
-    disk = os.path.join(FRONTEND_OUT, clean)
-    if os.path.exists(disk) and os.path.isfile(disk):
-        return FileResponse(disk, media_type=mimetypes.guess_type(disk))
-    html_f = os.path.join(FRONTEND_OUT, f"{clean}.html")
-    if os.path.exists(html_f): return FileResponse(html_f, media_type="text/html")
-    return Response(content="GLUVIAS SYSTEM FRAMEWORK ACTIVE", media_type="text/plain")
+            <div id="view-comp" class="space-y-4">
+                <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
+                    <div class="flex space-x-2">
+                        <input type="text" id="c-query" placeholder="ENTER COMPANY NAME..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <button onclick="runCompanySearch()" class="bg-green-600 text-black text-xs font-bold px-4 rounded">DISCOVER</button>
+                    </div>
+                    <div id="c-results" class="mt-3 space-y-2"></div>
+                </div>
+                <div id="c-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300"></div>
+            </div>
+
+            <div id="view-plan" class="space-y-4 hidden">
+                <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
+                    <div class="flex space-x-2">
+                        <input type="text" id="p-query" placeholder="ENTER POSTCODE..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <button onclick="runPlanningSearch()" class="bg-blue-600 text-white text-xs font-bold px-4 rounded">SCAN MAP AREA</button>
+                    </div>
+                </div>
+                <div id="p-results" class="bg-[#11141a] border border-gray-800 p-4 rounded hidden space-y-2"></div>
+            </div>
+        </main>
+
+        <script>
+            function switchMode(m) {
+                document.getElementById('view-comp').classList.toggle('hidden', m !== 'comp');
+                document.getElementById('view-plan').classList.toggle('hidden', m !== 'plan');
+                document.getElementById('t-comp').className = m === 'comp' ? "px-4 py-2 text-xs border-t-2 border-green-500 text-green-400 bg-[#11141a]" : "px-4 py-2 text-xs border-t-2 border-transparent text-gray-500";
+                document.getElementById('t-plan').className = m === 'plan' ? "px-4 py-2 text-xs border-t-2 border-blue-500 text-blue-400 bg-[#11141a]" : "px-4 py-2 text-xs border-t-2 border-transparent text-gray-500";
+            }
+            async function runCompanySearch() {
+                const q = document.getElementById('c-query').value;
+                const res = await fetch(`/api/company-search?q=${q}`);
+                const data = await res.json();
+                document.getElementById('c-results').innerHTML = data.candidates.map(c => `
+                    <div onclick="getIntel('${c.crn}')" class="p-2 bg-[#0d0f12] border border-gray-800 hover:border-green-500 rounded text-xs cursor-pointer flex justify-between">
+                        <span>${c.name} (CRN: ${c.crn})</span> <span class="text-green-400">${c.status}</span>
+                    </div>
+                `).join('');
+            }
+            async function getIntel(crn) {
+                document.getElementById('c-report-box').classList.remove('hidden');
+                document.getElementById('c-report-box').innerText = "RUNNING COMPREHENSIVE FORENSIC & FINANCIAL AUDIT...";
+                const res = await fetch(`/api/company-intelligence?crn=${crn}`);
+                const data = await res.json();
+                document.getElementById('c-report-box').innerText = data.intelligence_report;
+            }
+            async function runPlanningSearch() {
+                const pc = document.getElementById('p-query').value;
+                const r = document.getElementById('p-results');
+                r.classList.remove('hidden');
+                r.innerText = "QUERYING LOCAL COUNCIL REGISTERS...";
+                const res = await fetch('/api/planning-search', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({postcode: pc})
+                });
+                const data = await res.json();
+                r.innerHTML = data.applications.map(a => `
+                    <div class="p-3 bg-[#0d0f12] border border-gray-800 rounded">
+                        <div class="text-blue-400 font-bold text-xs">${a.reference} [${a.status}]</div>
+                        <div class="text-white text-xs font-semibold my-1">${a.address}</div>
+                        <p class="text-xs text-gray-400">${a.description}</p>
+                    </div>
+                `).join('');
+            }
+        </script>
+    </body>
+    </html>
+    """
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
