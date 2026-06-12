@@ -107,6 +107,16 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
         officer_lines = []
         for off in o_res.json().get("items", []) if o_res.status_code == 200 else []:
             name = off.get("name", "Unknown").upper()
+            
+            # Extract date of birth parameters accurately
+            dob_dict = off.get("date_of_birth", {})
+            dob_str = "DOB NOT DISCLOSED"
+            if dob_dict.get("month") and dob_dict.get("year"):
+                months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+                m_idx = int(dob_dict.get("month")) - 1
+                m_label = months[m_idx] if 0 <= m_idx < 12 else str(dob_dict.get("month"))
+                dob_str = f"DOB: {m_label} {dob_dict.get('year')}"
+
             appointments_link = off.get("links", {}).get("appointments", "")
             link_count = 1
             if appointments_link:
@@ -116,7 +126,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                     app_res = await client.get(f"https://api.company-information.service.gov.uk{appointments_link}", headers={"Authorization": f"Basic {encoded}"})
                     if app_res.status_code == 200: link_count = app_res.json().get("total_count", 1)
                 except: pass
-            officer_lines.append(f"- Officer: {name} | Network Scan: Linked to {link_count} corporate allocations")
+            officer_lines.append(f"- Officer: {name} ({dob_str}) | Network Scan: Linked to {link_count} corporate allocations")
             
         filing_lines = []
         for f in f_res.json().get("items", []) if f_res.status_code == 200 else []:
@@ -131,8 +141,14 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 max_tokens=3500,
                 temperature=0.1,
                 system="""You are the Lead Commercial Risk Architect for GLUVIAS. Process the company records into a detailed plain English dossier.
+                
+                CRITICAL IDENTITY & RISK UNBLINDING DIRECTIVES:
+                1. Always display the listed officer's extracted date of birth bracket directly next to their name.
+                2. If you identify any structural anomaly, overlapping directorship footprint, multiple cross-links, or unusual pattern associated with an officer, DO NOT use anonymous language or generic placeholders (e.g., do not say 'a certain director' or 'an appointed member'). You MUST explicitly mention the specific officer by their full name when detailing the concern or pattern.
+                
+                TONE & LIST FORMATTING RULES:
                 - Every single line inside your analytical points MUST begin with a hyphen list marker and a space (e.g. "- The balance sheet...").
-                - You must break down the data across these exact headers:
+                - Break down the analysis across these exact headers:
                 ## Overview Narrative Matrix
                 ## Financial Audit Ledger & Capital Health
                 ## Corporate Cross-Links & Directorship Mapping
