@@ -69,6 +69,11 @@ class PlanningSearchRequest(BaseModel):
 async def root_direct():
     return RedirectResponse(url="/dashboard", status_code=307)
 
+@app.get("/dashboard", response_class=HTMLResponse)
+async def serve_dashboard():
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
 @app.post("/api/legal-analysis")
 async def legal_analysis(req: LegalSearchRequest):
     bucket_context_summary = "No files read from vault."
@@ -89,22 +94,7 @@ async def legal_analysis(req: LegalSearchRequest):
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=0.1,
-                system=f"""You are an elite, straight-talking legal researcher. Your style balances forensic precision with absolute clarity. Start directly with the core answer. No bar fluff.
-
-                CRITICAL OPERATIONAL BOUNDARIES:
-                1. Focus entirely on concrete legal liabilities and data. Never mention your internal layout or backend setup.
-                2. Hard citation lock: Cite exact volume/paragraph pinpoint markers when referencing source workspace objects.
-                3. Formatting rule: Every single statement line or analytical step MUST start with a hyphen list marker and a space (e.g., "- The track demonstrates...").
-
-                SECURE SOURCE MATERIAL AVAILABLE IN VAULT:
-                {bucket_context_summary}
-
-                Structure your output exactly using these professional divisions:
-                ## I. Expert Opinion
-                ## II. Governing Statutory & Textbook Matrix
-                ## III. Evidentiary Weight & Disclosure Thresholds
-                ## IV. Litigious Exposures & Remedial Hurdles
-                ## V. Concluding Strategic Directions""",
+                system=f"You are an elite, straight-talking legal researcher. Start directly with the core answer. Every line must start with a hyphen list marker. Secure Workspace:\n{bucket_context_summary}",
                 messages=[{"role": "user", "content": req.query}]
             )
             analysis_content = extract_text_safely(msg)
@@ -132,14 +122,7 @@ async def legal_followup(req: LegalFollowUpRequest):
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=0.2,
-                system=f"""You are an elite legal researcher handling interactive consultation backchannels. Cut straight to the point.
-                OPERATIONAL BOUNDARIES:
-                1. Keep style sharp, forensic, and direct. 
-                2. Hard citations only: Match against pinpoint sections.
-                3. Every single statement line within your response MUST begin with a hyphen list marker and a space.
-                
-                SECURE SOURCE MATERIAL IN VAULT:
-                {bucket_context_summary}""",
+                system=f"You are an elite legal researcher. Every statement line must start with a hyphen list marker. Secure Workspace:\n{bucket_context_summary}",
                 messages=[
                     {"role": "user", "content": f"Initial scenario: {req.original_query}"},
                     {"role": "assistant", "content": req.previous_judgment},
@@ -179,37 +162,23 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             name = off.get("name", "Unknown Officer").upper()
             role = off.get("officer_role", "Director").upper()
             status = "RESIGNED" if off.get("resigned_on") else "ACTIVE"
-            dob_dict = off.get("date_of_birth", {})
-            dob_str = f"DOB: {dob_dict.get('month')}/{dob_dict.get('year')}" if dob_dict.get("month") else "DOB UNRECORDED"
-            officer_lines.append(f"- {role} ({status}): {name} | {dob_str}")
+            officer_lines.append(f"- {role} ({status}): {name}")
             
         filing_lines = []
         for f in f_res.json().get("items", []) if f_res.status_code == 200 else []:
             filing_lines.append(f"- [{f.get('date')}] TYPE: {f.get('type','').upper()} | {f.get('description','').upper().replace('-', ' ')}")
 
-        forensic_payload = f"""
-        COMPANY NAME: {comp_name}
-        REGISTRATION NUMBER (CRN): {crn}
-        REGISTERED OFFICE ADDRESS: {clean_address}
-        CURRENT FILING STATUS: {profile.get('company_status','UNKNOWN').upper()}
-        INCORPORATION DATE: {profile.get('date_of_creation','UNKNOWN')}
-        
-        VETTED REGISTRY OFFICERS AND MANAGEMENT RECORDS:
-        {"\n".join(officer_lines) if officer_lines else "No officer list entries available."}
-        
-        CHRONOLOGICAL FILING TIMELINE EXTRAPOLATIONS:
-        {"\n".join(filing_lines) if filing_lines else "No filing entries returned."}
-        """
-        
+        forensic_payload = f"Name: {comp_name}\nCRN: {crn}\nAddress: {clean_address}\n\nOfficers:\n" + "\n".join(officer_lines) + "\n\nFilings:\n" + "\n".join(filing_lines)
         report_content = forensic_payload
+
         if anthropic_client:
             try:
                 msg = anthropic_client.messages.create(
                     model="claude-sonnet-4-6",
                     max_tokens=3500,
                     temperature=0.1,
-                    system="""You are an expert financial investigator and corporate intelligence analyst. Reconstruct these raw registry logs into a high-end human narrative intelligence brief. Avoid cold tables and raw ledger text; explain in natural, flowing paragraphs who the key directors are, cross-reference their operational history, and detail the historical corporate trajectory like an analytical specialist presenting data to an investigative board. Every line of your output narrative must start with a hyphen list marker.""",
-                    messages=[{"role": "user", "content": f"Synthesize this company profile data into a comprehensive human narrative brief:\n{forensic_payload}"}]
+                    system="You are an expert corporate intelligence analyst. Reconstruct these raw registry logs into a beautiful, fluid, human narrative intelligence brief. Do not deliver cold lists or raw ledger logs; write comprehensive analytical paragraphs explaining executive changes, corporate velocity, and risk footprints like a senior specialist briefing a live board. Every line must start with a hyphen list marker.",
+                    messages=[{"role": "user", "content": f"Synthesize this timeline data into a human narrative report:\n{forensic_payload}"}]
                 )
                 report_content = extract_text_safely(msg)
             except Exception as e:
@@ -275,163 +244,6 @@ async def export_docx(req: LegalSearchRequest):
         return StreamingResponse(file_stream, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     except Exception as e:
         raise HTTPException(status_code=500, detail="Export failed.")
-
-@app.get("/dashboard", response_class=HTMLResponse)
-async def serve_dashboard():
-    html_layout = """<!DOCTYPE html>
-    <html>
-    <head>
-        <title>GLUVIAS // Core Console</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap'); 
-            body { font-family: 'JetBrains Mono', monospace; background-color: #0d0f12; }
-            
-            /* Mobile Phone Dynamic Adjustments */
-            @media (max-width: 768px) {
-                main { padding: 12px !important; space-y: 4px !important; }
-                .flex.space-x-2 { flex-direction: column !important; gap: 8px !important; space-x: 0 !important; }
-                .flex.space-x-2 button, .flex.space-x-2 input { width: 100% !important; margin-left: 0 !important; }
-                header { flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; }
-            }
-        </style>
-    </head>
-    <body class="text-gray-300 min-h-screen flex flex-col">
-        <header class="border-b border-gray-800 bg-[#11141a] px-6 py-4 flex justify-between items-center">
-            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // INTELLIGENCE HUB V3.9</h1>
-            <div class="text-[10px] text-green-400 font-bold">PINPOINT VAULT STORAGE // ONLINE</div>
-        </header>
-        <main class="flex-1 max-w-6xl w-full mx-auto p-6 space-y-6">
-            <div class="flex space-x-2 border-b border-gray-800 overflow-x-auto whitespace-nowrap">
-                <button id="t-legal" onclick="switchMode('legal')" class="px-4 py-2 text-xs border-t-2 border-red-500 text-red-400 bg-[#11141a]">⚖️ Legal Search</button>
-                <button id="t-comp" onclick="switchMode('comp')" class="px-4 py-2 text-xs border-t-2 border-transparent text-gray-500">🏢 Corporate Intel</button>
-                <button id="t-plan" onclick="switchMode('plan')" class="px-4 py-2 text-xs border-t-2 border-transparent text-gray-500">🗺️ Planning</button>
-            </div>
-            
-            <div id="view-legal" class="space-y-4">
-                <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
-                    <div class="flex space-x-2">
-                        <input type="text" id="l-query" placeholder="ENTER INITIAL SCENARIO..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
-                        <button onclick="runLegalAnalysis()" class="bg-red-600 text-white text-xs font-bold px-5 py-2 rounded hover:bg-red-700">EXECUTE REASONING</button>
-                    </div>
-                </div>
-                <div id="l-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
-                <div id="consultation-deck" class="bg-[#141822] border border-dashed border-red-900/60 p-4 rounded hidden space-y-4">
-                    <div class="text-[11px] font-bold text-red-400 tracking-wider">⚖️ INTERACTIVE CONSULTATION BACKCHANNEL</div>
-                    <div id="followup-history" class="space-y-3 max-h-[300px] overflow-y-auto text-xs font-mono p-2 bg-[#0d0f12] rounded border border-gray-800 hidden"></div>
-                    <div class="flex space-x-2">
-                        <input type="text" id="f-query" placeholder="ASK FOLLOW-UP QUESTION..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
-                        <button onclick="runFollowUpAnalysis()" class="bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-amber-700">SUBMIT INQUIRY</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="view-comp" class="space-y-4 hidden">
-                <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
-                    <div class="flex space-x-2">
-                        <input type="text" id="c-query" placeholder="ENTER COMPANY NAME OR CRN..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
-                        <button onclick="runCompanySearch()" class="bg-blue-600 text-white text-xs font-bold px-5 py-2 rounded hover:bg-blue-700">RUN SEARCH</button>
-                    </div>
-                </div>
-                <div id="c-results-box" class="bg-[#11141a] border border-gray-800 p-4 rounded hidden space-y-2 text-xs"></div>
-                <div id="c-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
-            </div>
-
-            <div id="view-plan" class="space-y-4 hidden">
-                <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
-                    <div class="flex space-x-2">
-                        <input type="text" id="p-postcode" placeholder="ENTER POSTCODE..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
-                        <button onclick="runPlanningSearch()" class="bg-green-600 text-white text-xs font-bold px-5 py-2 rounded hover:bg-green-700">MAP RADAR</button>
-                    </div>
-                </div>
-                <div id="p-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
-            </div>
-        </main>
-        <script>
-            let originalQuerySaved = "";
-            let currentFullJudgment = "";
-
-            function switchMode(m) {
-                ['legal', 'comp', 'plan'].forEach(t => {
-                    document.getElementById('view-' + t).classList.toggle('hidden', t !== m);
-                    const btn = document.getElementById('t-' + t);
-                    if(btn) {
-                        btn.className = t === m ? "px-4 py-2 text-xs border-t-2 border-red-500 text-red-400 bg-[#11141a]" : "px-4 py-2 text-xs border-t-2 border-transparent text-gray-500";
-                    }
-                });
-            }
-            
-            async function runLegalAnalysis() {
-                const q = document.getElementById('l-query').value;
-                if(!q) return;
-                originalQuerySaved = q;
-                const rBox = document.getElementById('l-report-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "PARSING WORKSPACE VAULT FOR PINPOINT REFERENCES...";
-                const res = await fetch('/api/legal-analysis', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q}) });
-                const data = await res.json(); 
-                currentFullJudgment = data.analysis_report;
-                rBox.innerText = currentFullJudgment;
-                document.getElementById('consultation-deck').classList.remove('hidden');
-            }
-
-            async function runFollowUpAnalysis() {
-                const fInput = document.getElementById('f-query');
-                const fText = fInput.value;
-                if(!fText) return;
-                const fHist = document.getElementById('followup-history');
-                fHist.classList.remove('hidden');
-                fHist.innerHTML += `<div class="text-gray-400 border-b border-gray-900 pb-1 mt-2"><strong>Inquiry:</strong> \${fText}</div>`;
-                fInput.value = "";
-                fHist.scrollTop = fHist.scrollHeight;
-
-                const res = await fetch('/api/legal-followup', {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({original_query: originalQuerySaved, previous_judgment: currentFullJudgment, follow_up_instruction: fText})
-                });
-                const data = await res.json();
-                fHist.innerHTML += `<div class="text-gray-200 bg-[#161b26] p-3 rounded mt-1 border-l-2 border-amber-500 whitespace-pre-line font-sans text-sm">\this \${data.followup_report}</div>`;
-                currentFullJudgment += "\\n\\n[Follow-up]: " + fText + "\\n" + data.followup_report;
-                fHist.scrollTop = fHist.scrollHeight;
-            }
-
-            async function runCompanySearch() {
-                const q = document.getElementById('c-query').value;
-                const rBox = document.getElementById('c-results-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "Querying Live Registry...";
-                const res = await fetch('/api/company-search?q=' + encodeURIComponent(q));
-                const data = await res.json();
-                rBox.innerHTML = "";
-                if(!data.candidates || data.candidates.length === 0) { rBox.innerText = "No entities found."; return; }
-                data.candidates.forEach(c => {
-                    rBox.innerHTML += `<div class="flex justify-between items-center bg-[#0d0f12] p-2 rounded border border-gray-800 text-white font-bold"><span>\${c.name} (\${c.crn})</span><button onclick="pullCompanyIntelligence('${c.crn}')" class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded hover:bg-blue-700">EXTRACT FORENSICS</button></div>`;
-                });
-            }
-
-            async function pullCompanyIntelligence(crn) {
-                const cleanCrn = crn.replace(/[^0-9A-Z]/gi, '');
-                const rBox = document.getElementById('c-report-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "Compiling footprints and synthesizing human corporate narrative...";
-                const res = await fetch('/api/company-intelligence?crn=' + cleanCrn);
-                const data = await res.json();
-                rBox.innerText = data.intelligence_report;
-            }
-
-            async function runPlanningSearch() {
-                const p = document.getElementById('p-postcode').value;
-                const rBox = document.getElementById('p-report-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "Querying planning registries...";
-                const res = await fetch('/api/planning-search', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({postcode:p}) });
-                const data = await res.json();
-                const app = data.applications;
-                rBox.innerText = `Reference: \${app.reference}\\nStatus: \${app.status}\\nAddress: \${app.address}\\n\\n\${app.parsed_intelligence}`;
-            }
-        </script>
-    </body>
-    </html>"""
-    return html_layout
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
