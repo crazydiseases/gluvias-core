@@ -277,7 +277,7 @@ async def serve_dashboard():
     return f"""
     <!DOCTYPE html>
     <html>
-    <head>
+    <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>GLUVIAS // Core Engine</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap'); body {{ font-family: 'JetBrains Mono', monospace; background-color: #0d0f12; }}</style>
