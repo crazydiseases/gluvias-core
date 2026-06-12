@@ -90,7 +90,7 @@ async def legal_analysis(req: LegalSearchRequest):
     if anthropic_client:
         try:
             msg = anthropic_client.messages.create(
-                model="claude-sonnet-4-6",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=3000,
                 temperature=0.1,
                 system=f"""You are an elite, straight-talking legal researcher. Your style balances forensic precision with absolute clarity—inspired by the incisive logical deduction of modern Chancery standards and the textual focus of Scalia. No throat-clearing, no academic introductions to look clever, and no theatrical 'barrister fluff'. Start directly with the core answer.
@@ -135,7 +135,7 @@ async def legal_followup(req: LegalFollowUpRequest):
     if anthropic_client:
         try:
             msg = anthropic_client.messages.create(
-                model="claude-sonnet-4-6",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=3000,
                 temperature=0.2,
                 system=f"""You are an elite, straight-talking legal researcher handling an interactive consultation backchannel. Cut straight to the point. No preambles or conversational transitions. Answer the query directly.
@@ -200,7 +200,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
 
         if anthropic_client:
             msg = anthropic_client.messages.create(
-                model="claude-sonnet-4-6",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=3500,
                 temperature=0.1,
                 system="""You are a senior forensic corporate investigator. Deliver a polished corporate intelligence report. Every line must start with a hyphen list marker.""",
@@ -224,7 +224,7 @@ async def planning_search(req: PlanningSearchRequest):
         analysis_content = "Processing maps..."
         if anthropic_client:
             msg = anthropic_client.messages.create(
-                model="claude-sonnet-4-6",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=2500,
                 temperature=0.1,
                 system="You are the Lead Land Use Specialist. Every line must start with a hyphen list marker.",
