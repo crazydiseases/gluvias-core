@@ -203,7 +203,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 model="claude-sonnet-4-6",
                 max_tokens=3500,
                 temperature=0.1,
-                system="""You are a senior forensic corporate investigator. Deliver a polished corporate intelligence report. Every line must start with a hyphen list marker.""",
+                system="""You are a brilliant, elite corporate analyst. Transform these raw registry footprints into a highly readable, flowing human narrative intelligence brief. Avoid cold tables and raw ledger text; explain who the key directors are, cross-reference their timelines, and detail the historical trajectory of the company like a human briefing an investigator. Every line must still start with a hyphen list marker.""",
                 messages=[{"role": "user", "content": forensic_payload}]
             )
             report_content = extract_text_safely(msg)
@@ -277,7 +277,7 @@ async def serve_dashboard():
     return f"""
     <!DOCTYPE html>
     <html>
-    <head>
+    <head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>@media (max-width: 768px) { main { display: flex !important; flex-direction: column !important; } .flex.space-x-2 { flex-direction: column !important; gap: 0.5rem; } .flex.space-x-2 > * { width: 100% !important; } .col-span-2, .col-span-1 { grid-column: span 3 / span 3 !important; } }</style>
         <title>GLUVIAS // Core Engine</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap'); body {{ font-family: 'JetBrains Mono', monospace; background-color: #0d0f12; }}</style>
