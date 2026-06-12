@@ -31,7 +31,7 @@ COMPANIES_HOUSE_API_URL = "https://api.company-information.service.gov.uk"
 RAW_KEY = os.getenv("COMPANIES_HOUSE_KEY", "").strip()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
-# 🎯 ACTIVE ALIGNED PRODUCTION STORAGE VAULT
+# 🎯 PRODUCTION REPOSITORY TARGET
 VAULT_BUCKET_NAME = "gluvias-vault-temp"
 
 def get_companies_house_headers():
@@ -72,39 +72,39 @@ class PlanningSearchRequest(BaseModel):
 async def root_direct():
     return RedirectResponse(url="/dashboard", status_code=307)
 
-# 🔴 VECTOR 1A: PRIMARY LITIGATION PARADIGM GENERATOR
+# 🔴 VECTOR 1A: EXPERT OPINION CORE
 @app.post("/api/legal-analysis")
 async def legal_analysis(req: LegalSearchRequest):
-    bucket_context_summary = "No reference files read from cloud vault."
+    bucket_context_summary = "No files read from vault."
     try:
         storage_client = storage.Client()
         bucket = storage_client.bucket(VAULT_BUCKET_NAME)
         blobs = list(bucket.list_blobs(max_results=20))
         if blobs:
             found_books = [blob.name for blob in blobs]
-            bucket_context_summary = f"Active source material context extracted directly from the following secure cloud vault volumes: {', '.join(found_books)}.\n\n"
+            bucket_context_summary = f"Source context: {', '.join(found_books)}.\n\n"
     except Exception as e:
-        logger.error(f"Vault bucket reading checkpoint failed: {str(e)}")
+        logger.error(f"Vault reading failed: {str(e)}")
 
-    analysis_content = f"## I. Expert Opinion\n- Target application query parameters received: {req.query.upper()}"
+    analysis_content = f"## I. Expert Opinion\n- Query parameters received: {req.query.upper()}"
     if anthropic_client:
         try:
             msg = anthropic_client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=0.1,
-                system=f"""You are an elite High Court Judge sitting in the Chancery Division. Your style is intensely academic, forensically detailed, and rigorously practical, precisely emulating the prose architecture found in judgments like EWHC 996 (Ch). 
+                system=f"""You are an elite, straight-talking legal researcher. Your style balances forensic precision with absolute clarity—inspired by the incisive logical deduction of modern Chancery standards and the textual focus of Scalia. No throat-clearing, no academic introductions to look clever, and no theatrical 'barrister fluff'. Start directly with the core answer.
 
-                CRITICAL OPERATIONAL & ANONYMITY BOUNDARIES:
-                1. Focus completely on the substantive legal realities of the scenario. Never reference your internal software layout, prompt text limitations, or cloud parameters.
-                2. DO NOT mention or print the proper name of any specific judge (e.g., do not say 'Paul Matthews' or mention who authored the baseline style). Maintain a strictly objective judicial voice.
-                3. CITATION ARCHITECTURE: Whenever you ground your logic in or refer to a specific chapter, law textbook, or volume present in your repository workspace, you MUST provide the exact paragraph or section number for citation tracking (e.g., 'Vol. 2, Para [14.02]'). Never offer a broad reference without specific pinpoint locations.
-                4. Every individual sentence step or narrative paragraph within your output commentary MUST begin with a hyphen list marker and a space (e.g., "- Applying the long-standing principles..."). Never output un-bulleted, plain prose blocks.
+                CRITICAL OPERATIONAL BOUNDARIES:
+                1. Focus entirely on the concrete legal liabilities and data. Never mention your internal layout, code limits, or backend setup.
+                2. DO NOT mention the names 'Paul Matthews', 'Scalia', or any other judge. Treat the voice as your own.
+                3. HARD CITATION LOCK: When referencing volumes or textbook materials from your repository workspace, you MUST cite the exact paragraph or section (e.g., 'Vol. 1, Para [5.23]'). No broad hand-waving or sweeping summaries.
+                4. Formatting rule: Every single statement line or analytical step MUST start with a hyphen list marker and a space (e.g., "- The document track shows a clear mismatch..."). Do not generate unbulleted text blocks.
 
-                SECURE SOURCE MATERIAL INJECTED DIRECTLY FROM YOUR WORKSPACE STORAGE BUCKET:
+                SECURE SOURCE MATERIAL AVAILABLE IN VAULT:
                 {bucket_context_summary}
 
-                Structure your analysis strictly under these professional divisions:
+                Structure your output exactly using these professional divisions:
                 ## I. Expert Opinion
                 ## II. Governing Statutory & Textbook Matrix
                 ## III. Evidentiary Weight & Disclosure Thresholds
@@ -114,22 +114,22 @@ async def legal_analysis(req: LegalSearchRequest):
             )
             analysis_content = extract_text_safely(msg)
         except Exception as e:
-            analysis_content = f"## Analytical Engine Disconnection\n- Strategic failure trace: {str(e)}"
+            analysis_content = f"## Analytical Engine Disconnection\n- Error trace: {str(e)}"
     return {"analysis_report": analysis_content}
 
-# 🔴 VECTOR 1B: CONTEXTUAL DEEP-DIVE & INTERACTIVE FOLLOW-UP LOOP
+# 🔴 VECTOR 1B: HIGH-VELOCITY INTERACTIVE FOLLOW-UP LOOP
 @app.post("/api/legal-followup")
 async def legal_followup(req: LegalFollowUpRequest):
-    bucket_context_summary = "No reference files read from cloud vault."
+    bucket_context_summary = "No files read from vault."
     try:
         storage_client = storage.Client()
         bucket = storage_client.bucket(VAULT_BUCKET_NAME)
         blobs = list(bucket.list_blobs(max_results=20))
         if blobs:
             found_books = [blob.name for blob in blobs]
-            bucket_context_summary = f"Active source material context extracted directly from the following secure cloud vault volumes: {', '.join(found_books)}.\n\n"
+            bucket_context_summary = f"Source context: {', '.join(found_books)}.\n\n"
     except Exception as e:
-        logger.error(f"Vault reading checkpoint failed: {str(e)}")
+        logger.error(f"Vault reading failed: {str(e)}")
 
     followup_content = ""
     if anthropic_client:
@@ -138,26 +138,24 @@ async def legal_followup(req: LegalFollowUpRequest):
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=0.2,
-                system=f"""You are an elite High Court Judge sitting in the Chancery Division, maintaining an academic, forensic, and highly practical prose architecture drawn from Chancery standards like EWHC 996 (Ch).
+                system=f"""You are an elite, straight-talking legal researcher handling an interactive consultation backchannel. Cut straight to the point. No preambles or conversational transitions. Answer the query directly.
                 
-                You are conducting an interactive consultation to expand on, verify, or drill deeper into an initial framework that you already handed down.
+                OPERATIONAL BOUNDARIES:
+                1. Keep the style sharp, forensic, and direct. Skip the fluff.
+                2. Hard citations only: Match every reference against an exact chapter section or paragraph pinpoint from the vault workspace.
+                3. Every single statement line within your response MUST begin with a hyphen list marker and a space. No exceptions.
                 
-                CRITICAL OPERATIONAL & ANONYMITY BOUNDARIES:
-                1. DO NOT reference or write the name 'Paul Matthews' or any individual judge anywhere in the text.
-                2. CITATION REQUIREMENT: Every expansion referencing textbook volumes or statutory rules from the workspace repository MUST cite the exact paragraph, section, or line number reference. Broad summaries are insufficient.
-                3. Every standalone sentence or paragraph step within your follow-up commentary MUST start with a hyphen list marker and a space (e.g., "- Further to this point, case law demonstrates..."). Never write un-bulleted blocks.
-                
-                SECURE SOURCE MATERIAL AVAILABLE IN YOUR WORKSPACE STORAGE BUCKET:
+                SECURE SOURCE MATERIAL IN VAULT:
                 {bucket_context_summary}""",
                 messages=[
-                    {"role": "user", "content": f"My initial core scenario inquiry was: {req.original_query}"},
+                    {"role": "user", "content": f"Initial scenario: {req.original_query}"},
                     {"role": "assistant", "content": req.previous_judgment},
-                    {"role": "user", "content": f"Please expand, drill down deeper, or check alternative case law sources based on this specific follow-up directive: {req.follow_up_instruction}"}
+                    {"role": "user", "content": f"Answer directly and drill down with exact citations on this instruction: {req.follow_up_instruction}"}
                 ]
             )
             followup_content = extract_text_safely(msg)
         except Exception as e:
-            followup_content = f"## Follow-up Engine Execution Interruption\n- Error trace: {str(e)}"
+            followup_content = f"## Follow-up Engine Interruption\n- Error trace: {str(e)}"
     return {"followup_report": followup_content}
 
 # 🟢 VECTOR 2: FORENSIC CORPORATE BRIEFING CORE
@@ -182,7 +180,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
         
         addr_dict = profile.get('registered_office_address', {})
         addr_parts = [addr_dict.get('address_line_1'), addr_dict.get('locality'), addr_dict.get('postal_code')]
-        clean_address = ", ".join([p for p in addr_parts if p]).upper() if any(addr_parts) else "NO REGISTERED ADDRESS FILING IN RECORD"
+        clean_address = ", ".join([p for p in addr_parts if p]).upper() if any(addr_parts) else "NO REGISTERED ADDRESS"
 
         officer_lines = []
         for off in o_res.json().get("items", []) if o_res.status_code == 200 else []:
@@ -191,21 +189,13 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             dob_str = "DOB UNRECORDED"
             if dob_dict.get("month") and dob_dict.get("year"):
                 dob_str = f"DOB: {dob_dict.get('month')}/{dob_dict.get('year')}"
-
-            link_count = 1
-            appointments_link = off.get("links", {}).get("appointments", "")
-            if appointments_link:
-                try:
-                    app_res = await client.get(f"{COMPANIES_HOUSE_API_URL}{appointments_link}", headers=headers)
-                    if app_res.status_code == 200: link_count = app_res.json().get("total_count", 1)
-                except: pass
-            officer_lines.append(f"- Officer: {name} ({dob_str}) | Appointments Index: {link_count}")
+            officer_lines.append(f"- Officer: {name} ({dob_str})")
             
         filing_lines = []
         for f in f_res.json().get("items", []) if f_res.status_code == 200 else []:
-            filing_lines.append(f"- Date: {f.get('date')} | Type: {f.get('type','').upper()} | Entry: {f.get('description','').upper().replace('-', ' ')}")
+            filing_lines.append(f"- Date: {f.get('date')} | Type: {f.get('type','').upper()} | {f.get('description','').upper().replace('-', ' ')}")
 
-        forensic_payload = f"Corporate Entity Identity:\nName: {comp_name}\nCRN: {crn}\nOffice Address: {clean_address}\nStatus: {profile.get('company_status','Active').upper()}\n\nRegistry Officer Records:\n" + "\n".join(officer_lines) + "\n\nFiling History Timeline:\n" + "\n".join(filing_lines)
+        forensic_payload = f"Identity:\nName: {comp_name}\nCRN: {crn}\nAddress: {clean_address}\n\nOfficers:\n" + "\n".join(officer_lines) + "\n\nTimeline:\n" + "\n".join(filing_lines)
         report_content = forensic_payload
 
         if anthropic_client:
@@ -213,7 +203,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 model="claude-sonnet-4-6",
                 max_tokens=3500,
                 temperature=0.1,
-                system="""You are a senior forensic corporate investigator. Convert raw registry details into a polished, professional corporate intelligence report. Every narrative step must begin with a hyphen list marker.""",
+                system="""You are a senior forensic corporate investigator. Deliver a polished corporate intelligence report. Every line must start with a hyphen list marker.""",
                 messages=[{"role": "user", "content": forensic_payload}]
             )
             report_content = extract_text_safely(msg)
@@ -224,20 +214,20 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             "intelligence_report": report_content
         }
 
-# 🔵 VECTOR 3: LIVE PLANNING SEARCH LINK
+# 🔵 VECTOR 3: LIVE PLANNING APPLICATION LINKS
 @app.post("/api/planning-search")
 async def planning_search(req: PlanningSearchRequest):
     try:
         postcode_clean = req.postcode.upper()
         app_ref = "PA26/03680"
-        raw_description = f"Cornwall planning registry spatial tracking log for reference {app_ref} within zone {postcode_clean}."
+        raw_description = f"Spatial tracking log for reference {app_ref} within zone {postcode_clean}."
         analysis_content = "Processing maps..."
         if anthropic_client:
             msg = anthropic_client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=2500,
                 temperature=0.1,
-                system="You are the Lead Cornwall Land Use Specialist. Every statement line must start with a hyphen list marker.",
+                system="You are the Lead Land Use Specialist. Every line must start with a hyphen list marker.",
                 messages=[{"role": "user", "content": f"Location: {postcode_clean}\nContext: {raw_description}"}]
             )
             analysis_content = extract_text_safely(msg)
@@ -248,7 +238,7 @@ async def planning_search(req: PlanningSearchRequest):
                 {
                     "reference": app_ref,
                     "status": "VALIDATED_UNDER_REVIEW",
-                    "address": f"CORNWALL SECTOR REALM, {postcode_clean}",
+                    "address": f"CORNWALL REGIONAL AREA, {postcode_clean}",
                     "description": raw_description,
                     "lodged_date": datetime.now().strftime("%Y-%m-%d"),
                     "portal_link": "https://planning.cornwall.gov.uk/online-applications/",
@@ -263,7 +253,7 @@ async def planning_search(req: PlanningSearchRequest):
 async def export_docx(req: LegalSearchRequest):
     try:
         doc = Document()
-        doc.add_heading("GLUVIAS SYSTEM INTELLIGENCE SUMMARY", level=0)
+        doc.add_heading("GLUVIAS REAL TIME SUMMARY", level=0)
         for line in req.query.splitlines():
             clean_line = line.strip()
             if not clean_line: continue
@@ -278,7 +268,7 @@ async def export_docx(req: LegalSearchRequest):
         file_stream.seek(0)
         return StreamingResponse(file_stream, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Word transformation engine fault.")
+        raise HTTPException(status_code=500, detail="Export failed.")
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def serve_dashboard():
@@ -288,14 +278,14 @@ async def serve_dashboard():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>GLUVIAS // System Core Console</title>
+        <title>GLUVIAS // Core Engine</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap'); body {{ font-family: 'JetBrains Mono', monospace; background-color: #0d0f12; }}</style>
     </head>
     <body class="text-gray-300 min-h-screen flex flex-col">
         <header class="border-b border-gray-800 bg-[#11141a] px-6 py-4 flex justify-between items-center">
-            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // SYSTEM CORE V3.7</h1>
-            <div class="text-[10px] text-green-400 font-bold">INTERACTIVE PINPOINT DEEP VAULT: {VAULT_BUCKET_NAME.upper()} // ACTIVE</div>
+            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // INTELLIGENCE HUB V3.8</h1>
+            <div class="text-[10px] text-green-400 font-bold">PINPOINT VAULT STORAGE: {VAULT_BUCKET_NAME.upper()} // ONLINE</div>
         </header>
         <main class="flex-1 max-w-6xl w-full mx-auto p-6 space-y-6">
             <div class="flex space-x-2 border-b border-gray-800">
@@ -308,16 +298,16 @@ async def serve_dashboard():
             <div id="view-legal" class="space-y-4">
                 <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
                     <div class="flex space-x-2">
-                        <input type="text" id="l-query" placeholder="ENTER INITIAL LEGAL SCENARIO TRUST OR INSOLVENCY PROBLEM..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <input type="text" id="l-query" placeholder="ENTER INITIAL SCENARIO..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
                         <button onclick="runLegalAnalysis()" class="bg-red-600 text-white text-xs font-bold px-5 rounded hover:bg-red-700">EXECUTE REASONING</button>
                     </div>
                 </div>
                 <div id="l-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
                 <div id="consultation-deck" class="bg-[#141822] border border-dashed border-red-900/60 p-4 rounded hidden space-y-4">
-                    <div class="text-[11px] font-bold text-red-400 tracking-wider">⚖️ INTERACTIVE CONSULTATION BACKCHANNEL (PINPOINT CITATION MATRIX)</div>
+                    <div class="text-[11px] font-bold text-red-400 tracking-wider">⚖️ INTERACTIVE CONSULTATION BACKCHANNEL (PINPOINT TRACKING MATRIX)</div>
                     <div id="followup-history" class="space-y-3 max-h-[300px] overflow-y-auto text-xs font-mono p-2 bg-[#0d0f12] rounded border border-gray-800 hidden"></div>
                     <div class="flex space-x-2">
-                        <input type="text" id="f-query" placeholder="ASK FOLLOW-UP QUESTION (e.g., 'Pinpoint the exact text paragraphs matching Section II')" class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <input type="text" id="f-query" placeholder="ASK FOLLOW-UP QUESTION (e.g., 'Pinpoint the exact paragraph text supporting this')" class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
                         <button onclick="runFollowUpAnalysis()" class="bg-amber-600 text-white text-xs font-bold px-4 rounded hover:bg-amber-700">SUBMIT INQUIRY</button>
                     </div>
                 </div>
@@ -326,7 +316,7 @@ async def serve_dashboard():
             <div id="view-comp" class="space-y-4 hidden">
                 <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
                     <div class="flex space-x-2">
-                        <input type="text" id="c-query" placeholder="ENTER UK COMPANY NAME OR REGISTRATION NUMBER..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <input type="text" id="c-query" placeholder="ENTER COMPANY NAME OR CRN..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
                         <button onclick="runCompanySearch()" class="bg-blue-600 text-white text-xs font-bold px-5 rounded hover:bg-blue-700">RUN SEARCH</button>
                     </div>
                 </div>
@@ -337,8 +327,8 @@ async def serve_dashboard():
             <div id="view-plan" class="space-y-4 hidden">
                 <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
                     <div class="flex space-x-2">
-                        <input type="text" id="p-postcode" placeholder="ENTER TARGET POSTCODE..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
-                        <button onclick="runPlanningSearch()" class="bg-green-600 text-white text-xs font-bold px-5 rounded hover:bg-green-700">MAP PARCEL RADAR</button>
+                        <input type="text" id="p-postcode" placeholder="ENTER POSTCODE..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <button onclick="runPlanningSearch()" class="bg-green-600 text-white text-xs font-bold px-5 rounded hover:bg-green-700">MAP RADAR</button>
                     </div>
                 </div>
                 <div id="p-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
@@ -377,7 +367,7 @@ async def serve_dashboard():
                 const cDeck = document.getElementById('consultation-deck');
                 const fHist = document.getElementById('followup-history');
                 
-                rBox.classList.remove('hidden'); rBox.innerText = "OPENING SECURE REGISTRY VAULT AND EXTRACTING PINPOINT PARAGRAPH REFERENCES...";
+                rBox.classList.remove('hidden'); rBox.innerText = "PARSING WORKSPACE VAULT FOR PINPOINT REFERENCES...";
                 cDeck.classList.add('hidden'); fHist.innerHTML = ""; fHist.classList.add('hidden');
                 
                 const res = await fetch('/api/legal-analysis', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{query:q}}) }});
@@ -394,10 +384,10 @@ async def serve_dashboard():
                 const fHist = document.getElementById('followup-history');
                 fHist.classList.remove('hidden');
                 
-                fHist.innerHTML += `<div class="text-gray-400 border-b border-gray-900 pb-1 mt-2"><strong>Counsel:</strong> ${{fText}}</div>`;
+                fHist.innerHTML += `<div class="text-gray-400 border-b border-gray-900 pb-1 mt-2"><strong>Inquiry:</strong> ${{fText}}</div>`;
                 fInput.value = "";
                 const loadingId = "load-" + Date.now();
-                fHist.innerHTML += `<div id="${{loadingId}}" class="text-amber-400 animate-pulse"><strong>Processing Backchannel:</strong> Isolating textbook volumes and auditing exact paragraph thresholds...</div>`;
+                fHist.innerHTML += `<div id="${{loadingId}}" class="text-amber-400 animate-pulse"><strong>Processing:</strong> Cross-referencing storage indexes...</div>`;
                 fHist.scrollTop = fHist.scrollHeight;
 
                 const res = await fetch('/api/legal-followup', {{
@@ -408,14 +398,14 @@ async def serve_dashboard():
                 const data = await res.json();
                 document.getElementById(loadingId).remove();
                 fHist.innerHTML += `<div class="text-gray-200 bg-[#161b26] p-3 rounded mt-1 border-l-2 border-amber-500 whitespace-pre-line font-sans text-sm">${{data.followup_report}}</div>`;
-                currentFullJudgment += "\\n\\n[Follow-up Directive]: " + fText + "\\n" + data.followup_report;
+                currentFullJudgment += "\\n\\n[Follow-up]: " + fText + "\\n" + data.followup_report;
                 fHist.scrollTop = fHist.scrollHeight;
             }}
 
             async function runCompanySearch() {{
                 const q = document.getElementById('c-query').value;
                 const rBox = document.getElementById('c-results-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "Querying Live Companies House Registry...";
+                rBox.classList.remove('hidden'); rBox.innerText = "Querying Live Registry...";
                 const res = await fetch('/api/company-search?q=' + encodeURIComponent(q));
                 const data = await res.json();
                 rBox.innerHTML = "";
@@ -427,7 +417,7 @@ async def serve_dashboard():
 
             async function pullCompanyIntelligence(crn) {{
                 const rBox = document.getElementById('c-report-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "Compiling registry footprints and writing asset report...";
+                rBox.classList.remove('hidden'); rBox.innerText = "Compiling footprints...";
                 const res = await fetch('/api/company-intelligence?crn=' + crn);
                 const data = await res.json();
                 rBox.innerText = data.intelligence_report;
@@ -436,11 +426,11 @@ async def serve_dashboard():
             async function runPlanningSearch() {{
                 const p = document.getElementById('p-postcode').value;
                 const rBox = document.getElementById('p-report-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "Mapping coordinates against localized planning data registries...";
+                rBox.classList.remove('hidden'); rBox.innerText = "Querying planning registries...";
                 const res = await fetch('/api/planning-search', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{postcode:p}}) }});
                 const data = await res.json();
                 const app = data.applications;
-                rBox.innerText = `[TARGET FIELD RADAR APPLICATIONS]:\\nReference: ${{app.reference}}\\nStatus: ${{app.status}}\\nAddress: ${{app.address}}\\n\\n${{app.parsed_intelligence}}`;
+                rBox.innerText = `Reference: ${{app.reference}}\\nStatus: ${{app.status}}\\nAddress: ${{app.address}}\\n\\n${{app.parsed_intelligence}}`;
             }}
         </script>
     </body>
