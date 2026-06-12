@@ -203,7 +203,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 model="claude-sonnet-4-6",
                 max_tokens=3500,
                 temperature=0.1,
-                system="""You are a senior forensic corporate investigator. Deliver a polished corporate intelligence report. Every line must start with a hyphen list marker.""",
+                system="""You are a premier corporate investigator. Reconstruct these raw registry logs into a high-end, comprehensive human narrative intelligence brief. Avoid cold ledger listings or rigid text lists; explain who the key directors are, cross-reference their operational timeline flags, and explain the historical trajectory of the company like a specialist presenting findings to an investigative board. Every line of your output narrative brief must start with a hyphen list marker followed by a space.""",
                 messages=[{"role": "user", "content": forensic_payload}]
             )
             report_content = extract_text_safely(msg)
@@ -280,7 +280,18 @@ async def serve_dashboard():
     <head>
         <title>GLUVIAS // Core Engine</title>
         <script src="https://cdn.tailwindcss.com"></script>
-        <style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap'); body {{ font-family: 'JetBrains Mono', monospace; background-color: #0d0f12; }}</style>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap'); 
+            body { font-family: 'JetBrains Mono', monospace; background-color: #0d0f12; }
+            @media (max-width: 768px) {
+                main { padding: 12px !important; }
+                .flex.space-x-2 { flex-direction: column !important; gap: 8px !important; space-x: 0 !important; }
+                .flex.space-x-2 button, .flex.space-x-2 input { width: 100% !important; margin-left: 0 !important; }
+                header { flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; }
+                #t-legal, #t-comp, #t-plan, #t-verify { font-size: 11px !important; padding: 8px 6px !important; }
+            }
+        </style>
     </head>
     <body class="text-gray-300 min-h-screen flex flex-col">
         <header class="border-b border-gray-800 bg-[#11141a] px-6 py-4 flex justify-between items-center">
