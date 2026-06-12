@@ -3,16 +3,15 @@ import io
 import re
 import base64
 import logging
-import mimetypes
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse, Response, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import httpx
 from anthropic import Anthropic
 from docx import Document
+import uvicorn
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("gluvias-core")
@@ -150,6 +149,16 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             "detected_anomalies": "Standard filing compliance."
         }
 
+@app.post("/api/export-docx")
+async def export_docx(req: LegalSearchRequest):
+    doc = Document()
+    doc.add_heading("GLUVIAS REPORT", level=0)
+    doc.add_paragraph(req.query)
+    file_stream = io.BytesIO()
+    doc.save(file_stream)
+    file_stream.seek(0)
+    return StreamingResponse(file_stream, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def serve_dashboard():
     return """
@@ -242,3 +251,7 @@ async def serve_dashboard():
     """
 
 cp backend/main.py main.py
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
