@@ -195,16 +195,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             
         filing_lines = []
         for f in f_res.json().get("items", []) if f_res.status_code == 200 else []:
-            desc = f.get('description', '').upper().replace('-', ' ')
-            vals = f.get('description_values', {})
-            if vals and 'officer_name' in vals:
-                desc += f" // TARGET INDIVIDUAL: {vals.get('officer_name', '').upper()}"
-            elif vals and 'termination_date' in vals:
-                # Catch any alternative naming properties inside the API schema
-                possible_name = vals.get('director_name') or vals.get('member_name') or vals.get('secretary_name')
-                if possible_name:
-                    desc += f" // TARGET INDIVIDUAL: {possible_name.upper()}"
-            filing_lines.append(f"- Date: {f.get('date')} | Type: {f.get('type','').upper()} | {desc}")
+            filing_lines.append(f"- Date: {f.get('date')} | Type: {f.get('type','').upper()} | {f.get('description','').upper().replace('-', ' ')}")
 
         forensic_payload = f"Identity:\nName: {comp_name}\nCRN: {crn}\nAddress: {clean_address}\n\nOfficers:\n" + "\n".join(officer_lines) + "\n\nTimeline:\n" + "\n".join(filing_lines)
         report_content = f"⚠️ ANTHROPIC COGNITIVE ENGINE OFFLINE / FALLBACK ACTIVE:\n\n{forensic_payload}"
@@ -214,7 +205,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 model="claude-sonnet-4-6",
                 max_tokens=3500,
                 temperature=0.1,
-                system="""You are a premier strategic corporate investigator. CRITICAL INSTRUCTION: You must always explicitly explicitly call out individuals by name whenever analyzing appointments, resignations, or shareholding movements. Never use generic or anonymous terminology like "a member" or "an officer" if names are present in the dataset payload. Reconstruct these raw registry logs into a beautiful, fluid, human narrative intelligence brief. Do not deliver cold ledger listings or rigid, tabular text; write rich, comprehensive analytical paragraphs that explain executive shifts, operational history, corporate momentum, and structural risk profiles like a senior specialist briefing an investor board. Every statement line or paragraph must start with a hyphen list marker followed by a space.""",
+                system="""You are a premier strategic corporate investigator. Reconstruct these raw registry logs into a beautiful, fluid, human narrative intelligence brief. Do not deliver cold ledger listings or rigid, tabular text; write rich, comprehensive analytical paragraphs that explain executive shifts, operational history, corporate momentum, and structural risk profiles like a senior specialist briefing an investor board. Every statement line or paragraph must start with a hyphen list marker followed by a space.""",
                 messages=[{"role": "user", "content": forensic_payload}]
             )
             report_content = extract_text_safely(msg)
