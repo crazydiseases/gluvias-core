@@ -116,15 +116,17 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 m_label = months[m_idx] if 0 <= m_idx < 12 else str(dob_dict.get("month"))
                 dob_str = f"DOB: {m_label} {dob_dict.get('year')}"
 
-            appointments_link = off.get("links", {}).get("appointments", "")
+            # REPAIRED INTERLOCKING SCANNER BLOCK
             link_count = 1
+            appointments_link = off.get("links", {}).get("appointments", "")
             if appointments_link:
                 try:
-                    clean_key = RAW_KEY.split(":") if ":" in RAW_KEY else RAW_KEY
-                    encoded = base64.b64encode(f"{clean_key}:".encode("utf-8")).decode("utf-8")
-                    app_res = await client.get(f"https://api.company-information.service.gov.uk{appointments_link}", headers={"Authorization": f"Basic {encoded}"})
-                    if app_res.status_code == 200: link_count = app_res.json().get("total_count", 1)
-                except: pass
+                    app_res = await client.get(f"{COMPANIES_HOUSE_API_URL}{appointments_link}", headers=headers)
+                    if app_res.status_code == 200:
+                        link_count = app_res.json().get("total_count", 1)
+                except Exception as app_err:
+                    logger.error(f"Appointments fetch fault: {str(app_err)}")
+
             officer_lines.append(f"- Officer: {name} ({dob_str}) | Network Scan: Linked to {link_count} corporate allocations")
             
         filing_lines = []
@@ -143,7 +145,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 
                 CRITICAL IDENTITY & RISK UNBLINDING DIRECTIVES:
                 1. Always display the listed officer's extracted date of birth bracket directly next to their name.
-                2. If you identify any structural anomaly, overlapping directorship footprint, multiple cross-links, or unusual pattern associated with an officer, DO NOT use anonymous language or generic placeholders. You MUST explicitly mention the specific officer by their full name when detailing the concern or pattern.
+                2. If you identify any structural anomaly, overlapping directorship footprint, multiple cross-links, or unusual pattern associated with an officer, DO NOT use anonymous language or generic placeholders (e.g., do not say 'a certain director' or 'an appointed member'). You MUST explicitly mention the specific officer by their full name when detailing the concern or pattern.
                 
                 TONE & LIST FORMATTING RULES:
                 - Every single line inside your analytical points MUST begin with a hyphen list marker and a space (e.g. "- The balance sheet...").
