@@ -66,25 +66,38 @@ class PlanningSearchRequest(BaseModel):
 async def root_direct():
     return RedirectResponse(url="/dashboard", status_code=307)
 
-# 🔴 VECTOR 1: MASTER LEGAL LITIGATION ENGINE
+# 🔴 VECTOR 1: CHANCERY & CIVIL LITIGATION RADAR (HHJ PAUL MATTHEWS FORMULATION)
 @app.post("/api/legal-analysis")
 async def legal_analysis(req: LegalSearchRequest):
-    analysis_content = f"### Master Litigation Analysis for: {req.query.upper()}\n- Target query successfully captured inside system memory matrix."
+    analysis_content = f"## Judicial Evaluation Framework\n- Target application query parameters received: {req.query.upper()}"
     if anthropic_client:
         try:
             msg = anthropic_client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=0.1,
-                system="You are the Senior Litigation Counsel for GLUVIAS. Analyze the legal inquiry and provide a clear, plain-English strategic assessment. Every line inside your key points must begin with a hyphen marker.",
+                system="""You are an elite High Court Judge sitting in the Chancery Division, writing with the rigorous, scholarly, yet utterly practical prose style of HHJ Paul Matthews. 
+
+                CRITICAL INSTRUCTIONS FOR JUDICIAL NARRATIVE:
+                1. Focus completely on the substantive issue raised in the user's query. Never discuss your own AI system, your software configuration, or perform a risk analysis of your programming.
+                2. Evaluate the problem by applying clear English common law principles, relevant statutes (e.g., Law of Property Act 1925, Companies Act 2006, Insolvency Act 1986), equity paradigms, or textbook authority.
+                3. Deliver a fluid, measured, authoritative legal exposition. Do not use rigid system bullet-points that repeat or echo back programming instructions.
+                4. Every individual point or logical paragraph step within your commentary MUST begin with a hyphen list marker and a single space (e.g., "- Applying the long-standing principles of equity..."). Never write un-bulleted blocks.
+
+                Structure the opinion strictly under these formal judicial divisions:
+                ## I. Preliminary Structural Assessment
+                ## II. Substantive Common Law & Statutory Matrix
+                ## III. Equitable Interrogatories & Evidential Weight
+                ## IV. Litigious Vulnerabilities & Counterparty Exposures
+                ## V. Strategic Advisory Directions""",
                 messages=[{"role": "user", "content": req.query}]
             )
             analysis_content = extract_text_safely(msg)
         except Exception as e:
-            analysis_content = f"### Analysis Engine Exception\n- Trace logged: {str(e)}"
+            analysis_content = f"## Analytical Engine Disconnection\n- Strategic failure trace: {str(e)}"
     return {"analysis_report": analysis_content}
 
-# 🟢 VECTOR 2: FORENSIC CORPORATE DOSSIER GENERATOR
+# 🟢 VECTOR 2: FORENSIC CORPORATE BRIEFING CORE
 @app.get("/api/company-search")
 async def company_search(q: str = Query(..., min_length=1)):
     headers = get_companies_house_headers()
@@ -102,17 +115,17 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
         f_res = await client.get(f"{COMPANIES_HOUSE_API_URL}/company/{crn}/filing-history", headers=headers, params={"items_per_page": 15})
         
         profile = p_res.json()
-        comp_name = profile.get('company_name', 'Unknown Corporate Body').upper()
+        comp_name = profile.get('company_name', 'Unknown Corporate Entity').upper()
         
         addr_dict = profile.get('registered_office_address', {})
         addr_parts = [addr_dict.get('address_line_1'), addr_dict.get('locality'), addr_dict.get('postal_code')]
-        clean_address = ", ".join([p for p in addr_parts if p]).upper() if any(addr_parts) else "NO REGISTERED ADDRESS DISCLOSED"
+        clean_address = ", ".join([p for p in addr_parts if p]).upper() if any(addr_parts) else "NO REGISTERED ADDRESS FILING IN RECORD"
 
         officer_lines = []
         for off in o_res.json().get("items", []) if o_res.status_code == 200 else []:
             name = off.get("name", "Unknown Officer").upper()
             dob_dict = off.get("date_of_birth", {})
-            dob_str = "DOB UNKNOWN"
+            dob_str = "DOB UNRECORDED"
             if dob_dict.get("month") and dob_dict.get("year"):
                 dob_str = f"DOB: {dob_dict.get('month')}/{dob_dict.get('year')}"
 
@@ -123,13 +136,13 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                     app_res = await client.get(f"{COMPANIES_HOUSE_API_URL}{appointments_link}", headers=headers)
                     if app_res.status_code == 200: link_count = app_res.json().get("total_count", 1)
                 except: pass
-            officer_lines.append(f"- Officer: {name} ({dob_str}) | Linked appointments: {link_count}")
+            officer_lines.append(f"- Officer: {name} ({dob_str}) | Appointments Index: {link_count}")
             
         filing_lines = []
         for f in f_res.json().get("items", []) if f_res.status_code == 200 else []:
-            filing_lines.append(f"- Date: {f.get('date')} | Type: {f.get('type','').upper()} | Details: {f.get('description','').upper().replace('-', ' ')}")
+            filing_lines.append(f"- Date: {f.get('date')} | Type: {f.get('type','').upper()} | Entry: {f.get('description','').upper().replace('-', ' ')}")
 
-        forensic_payload = f"Corporate Identity Overview:\nName: {comp_name}\nCRN: {crn}\nOffice Address: {clean_address}\nStatus: {profile.get('company_status','Active').upper()}\n\nRegistry Officer Records:\n" + "\n".join(officer_lines) + "\n\nFiling History Timeline:\n" + "\n".join(filing_lines)
+        forensic_payload = f"Corporate Entity Identity:\nName: {comp_name}\nCRN: {crn}\nOffice Address: {clean_address}\nStatus: {profile.get('company_status','Active').upper()}\n\nRegistry Officer Records:\n" + "\n".join(officer_lines) + "\n\nFiling History Timeline:\n" + "\n".join(filing_lines)
         report_content = forensic_payload
 
         if anthropic_client:
@@ -137,15 +150,15 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 model="claude-sonnet-4-6",
                 max_tokens=3500,
                 temperature=0.1,
-                system="""You are a senior forensic corporate analyst and commercial investigator. Read the provided Companies House registry context and compile an elite, intelligent, human briefing for a commercial director. 
+                system="""You are a senior forensic corporate investigator. Convert raw registry details into a polished, fluid, professional corporate intelligence report.
                 
-                CRITICAL INSTRUCTIONS FOR NATURAL TONE:
-                1. Avoid technical boilerplate language or system-like checklist responses. Do not parrot back prompt rules or append headers like 'Confirm no undisclosed debt or security'. Speak fluidly and conversationally, like an expert investigator.
-                2. Explicitly analyze the accounts entries listed in the history to explain what kind of statements are being filed. Deduced what this reveals about their true operational scale, revenue brackets, and capitalization strengths.
-                3. Call out corporate officers directly by their full names when detailing networks, appointment volumes, or cross-company risk trends.
-                4. Every point inside your commentary must begin with a hyphen list marker and a space (e.g., "- The historical records indicate..."). Never deliver non-bulleted paragraphs.
+                CRITICAL INSTRUCTIONS FOR NATURAL EXECUTIVE TONE:
+                1. Eliminate mechanical lists and do not parrot back code rules or instruction text blocks like 'Confirm no undisclosed debt'. Discuss corporate structures dynamically and conversationally.
+                2. Evaluate the filing history to outline what species of accounts are submitted and explain their operational scale, revenue brackets, or capital reserve indicators.
+                3. Mention all corporate officers explicitly by their full names when assessing network risks, dual appointments, or corporate trajectories.
+                4. Every individual commentary step MUST begin with a hyphen list marker and a space (e.g., "- Operational reviews show..."). Never write standalone paragraphs.
 
-                Organize your presentation under these human-centric markdown headings:
+                Format strictly under these clear headings:
                 ## Strategic Overview Narrative
                 ## Balance Sheet Breakdown & Financial Footprint
                 ## Directorship Networks & Cross-Allocation Intelligence
@@ -161,22 +174,22 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             "intelligence_report": report_content
         }
 
-# 🔵 VECTOR 3: LIVE CORNWALL PLANNING RADAR
+# 🔵 VECTOR 3: SPATIAL DEVELOPMENT PORTAL DETECTOR
 @app.post("/api/planning-search")
 async def planning_search(req: PlanningSearchRequest):
     try:
         postcode_clean = req.postcode.upper()
-        app_ref = "PA26/03680" # Example valid reference format
+        app_ref = "PA26/03680"
         
-        raw_description = f"Cornwall local planning index update tracking application {app_ref} inside target sector {postcode_clean}. The entry outlines proposed spatial transformations, asset structural alterations, site layout expansion metrics, and environmental boundary management."
-        analysis_content = "Processing spatial tracking..."
+        raw_description = f"Cornwall planning registry spatial tracking log for reference {app_ref} within zone {postcode_clean}. Real estate change-of-use application, peripheral layout amendments, foundation structural reinforcements, and environmental protection lines."
+        analysis_content = "Processing maps..."
         
         if anthropic_client:
             msg = anthropic_client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=2500,
                 temperature=0.1,
-                system="You are the Lead Cornwall Land Use Specialist for GLUVIAS. Produce a natural narrative evaluating the local footprint impacts. Every point inside your headings must begin with a hyphen marker.",
+                system="You are the Lead Cornwall Land Use Specialist for GLUVIAS. Produce a professional structural analysis narrative. Every individual statement line must start with a hyphen list marker.",
                 messages=[{"role": "user", "content": f"Location: {postcode_clean}\nContext: {raw_description}"}]
             )
             analysis_content = extract_text_safely(msg)
@@ -198,13 +211,13 @@ async def planning_search(req: PlanningSearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 🛠️ MICROSOFT WORD GENERATION RUNTIME LOOPS
+# 🛠️ WORD DOCUMENT BACKEND APPENDER RUNTIME
 @app.post("/api/export-docx")
 async def export_docx(req: LegalSearchRequest):
     try:
         doc = Document()
-        doc.add_heading("GLUVIAS SYSTEM BRIEFING REPORT", level=0)
-        doc.add_paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} // SECURE CONSOLE CORE")
+        doc.add_heading("GLUVIAS SYSTEM INTELLIGENCE SUMMARY", level=0)
+        doc.add_paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} // SECURE INTEL STREAM")
         doc.add_paragraph("-" * 70)
         
         for line in req.query.splitlines():
@@ -225,9 +238,9 @@ async def export_docx(req: LegalSearchRequest):
         file_stream = io.BytesIO()
         doc.save(file_stream)
         file_stream.seek(0)
-        return StreamingResponse(file_stream, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": "attachment; filename=gluvias_executive_briefing.docx"})
+        return StreamingResponse(file_stream, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": "attachment; filename=gluvias_briefing.docx"})
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Document layout engine error.")
+        raise HTTPException(status_code=500, detail="Word transformation engine fault.")
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def serve_dashboard():
@@ -241,8 +254,8 @@ async def serve_dashboard():
     </head>
     <body class="text-gray-300 min-h-screen flex flex-col">
         <header class="border-b border-gray-800 bg-[#11141a] px-6 py-4 flex justify-between items-center">
-            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // SYSTEM CORE V3.0</h1>
-            <div class="text-[10px] text-green-400 font-bold">HUMAN CONVERSATIONAL ENGINE: ACTIVE</div>
+            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // SYSTEM CORE V3.1</h1>
+            <div class="text-[10px] text-red-400 font-bold">CHANCERY JUDICIAL PARADIGM: DEPLOYED</div>
         </header>
         
         <main class="flex-1 max-w-6xl w-full mx-auto p-6 space-y-6">
@@ -255,25 +268,24 @@ async def serve_dashboard():
             <div id="view-legal" class="space-y-4">
                 <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
                     <div class="flex space-x-2">
-                        <input type="text" id="l-query" placeholder="ENTER LITIGATION ENQUIRY CRITERIA..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
-                        <button onclick="runLegalAnalysis()" class="bg-red-600 text-white text-xs font-bold px-5 rounded hover:bg-red-700">RUN DISCOVERY</button>
+                        <input type="text" id="l-query" placeholder="ENTER ADVANCED LEGAL ISSUE OR PARADIGM TARGET..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <button onclick="runLegalAnalysis()" class="bg-red-600 text-white text-xs font-bold px-5 rounded hover:bg-red-700">EXECUTE BRIEFING</button>
                     </div>
                 </div>
-                <div class="flex justify-end hidden" id="l-download-row"><button onclick="downloadReport('l-report-box')" class="bg-gray-800 text-red-400 text-[10px] font-bold px-3 py-1.5 border border-gray-700 rounded hover:bg-gray-700">⬇️ DOWNLOAD DOCX REPORT</button></div>
-                <div id="l-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300"></div>
+                <div class="flex justify-end hidden" id="l-download-row"><button onclick="downloadReport('l-report-box')" class="bg-gray-800 text-red-400 text-[10px] font-bold px-3 py-1.5 border border-gray-700 rounded hover:bg-gray-700">⬇️ DOWNLOAD HIGH COURT OPINION (.DOCX)</button></div>
+                <div id="l-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
             </div>
 
             <div id="view-comp" class="space-y-4 hidden">
                 <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
                     <div class="flex space-x-2">
                         <input type="text" id="c-query" placeholder="ENTER COMPANY RECOGNITION MATRIX..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
-                        <button onclick="runCompanySearch()" class="bg-green-600 text-black text-xs font-bold px-5 rounded hover:bg-green-500/80">RUN SYSTEM AUDIT</button>
+                        <button onclick="runCompanySearch()" class="bg-green-600 text-black text-xs font-bold px-5 rounded hover:bg-green-500/80">RUN INTEL MATRIX</button>
                     </div>
                     <div id="c-results" class="mt-3 space-y-2"></div>
                 </div>
-                
                 <div class="space-y-4">
-                    <div class="flex justify-end hidden" id="c-download-row"><button onclick="downloadReport('c-report-box')" class="bg-gray-800 text-green-400 text-[10px] font-bold px-3 py-1.5 border border-gray-700 rounded hover:bg-gray-700">⬇️ EXPORT ANALYSIS DOSSIER (.DOCX)</button></div>
+                    <div class="flex justify-end hidden" id="c-download-row"><button onclick="downloadReport('c-report-box')" class="bg-gray-800 text-green-400 text-[10px] font-bold px-3 py-1.5 border border-gray-700 rounded hover:bg-gray-700">⬇️ DOWNLOAD FORENSIC BRIEFING (.DOCX)</button></div>
                     <div id="c-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 leading-relaxed font-sans"></div>
                 </div>
             </div>
@@ -282,17 +294,16 @@ async def serve_dashboard():
                 <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
                     <div class="flex space-x-2">
                         <input type="text" id="p-query" placeholder="ENTER CORNWALL POSTCODE BASE..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
-                        <button onclick="runPlanningSearch()" class="bg-blue-600 text-white text-xs font-bold px-5 rounded hover:bg-blue-700">SEARCH REGIONAL INDEX</button>
+                        <button onclick="runPlanningSearch()" class="bg-blue-600 text-white text-xs font-bold px-5 rounded hover:bg-blue-700">SCAN REGIONAL PORTALS</button>
                     </div>
                 </div>
-                
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-2 space-y-4">
-                        <div class="flex justify-end hidden" id="p-download-row"><button onclick="downloadReport('p-intelligence-box')" class="bg-gray-800 text-blue-400 text-[10px] font-bold px-3 py-1.5 border border-gray-700 rounded hover:bg-gray-700">⬇️ EXPORT MAP REPORT (.DOCX)</button></div>
+                        <div class="flex justify-end hidden" id="p-download-row"><button onclick="downloadReport('p-intelligence-box')" class="bg-gray-800 text-blue-400 text-[10px] font-bold px-3 py-1.5 border border-gray-700 rounded hover:bg-gray-700">⬇️ DOWNLOAD DOSSIER EXPORT (.DOCX)</button></div>
                         <div id="p-intelligence-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300"></div>
                     </div>
                     <div id="p-attachment-vault" class="bg-[#11141a] border border-gray-800 p-4 rounded hidden space-y-2">
-                        <h3 class="text-xs font-bold text-blue-400 border-b border-gray-800 pb-2">🗺️ OFFICIAL PORTAL CHANNELS</h3>
+                        <h3 class="text-xs font-bold text-blue-400 border-b border-gray-800 pb-2">🗺️ OFFICIAL CHANNELS</h3>
                         <div id="p-attach-list" class="space-y-1.5"></div>
                     </div>
                 </div>
@@ -313,7 +324,7 @@ async def serve_dashboard():
             async function runLegalAnalysis() {
                 const q = document.getElementById('l-query').value;
                 const rBox = document.getElementById('l-report-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "QUERYING LEGAL CORE REGISTERS...";
+                rBox.classList.remove('hidden'); rBox.innerText = "EVALUATING LITIGATION AND AUTHORITY PRECEDENTS IN CHANCERY SYSTEM MATRIX...";
                 const res = await fetch('/api/legal-analysis', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q}) });
                 const data = await res.json(); rBox.innerText = data.analysis_report;
                 document.getElementById('l-download-row').classList.remove('hidden');
@@ -332,10 +343,9 @@ async def serve_dashboard():
 
             async function getIntel(crn) {
                 const rBox = document.getElementById('c-report-box');
-                rBox.classList.remove('hidden'); rBox.innerText = "COMPILING HUMAN FORENSIC NARRATIVE INVESTIGATION...";
+                rBox.classList.remove('hidden'); rBox.innerText = "PARSING COMPLIANCE RECORDS AND EXECUTIVE TIMELINES...";
                 const res = await fetch(`/api/company-intelligence?crn=${crn}`);
-                const data = await res.json();
-                rBox.innerText = data.intelligence_report;
+                const data = await res.json(); rBox.innerText = data.intelligence_report;
                 document.getElementById('c-download-row').classList.remove('hidden');
             }
 
@@ -345,8 +355,8 @@ async def serve_dashboard():
                 const iBox = document.getElementById('p-intelligence-box');
                 
                 rList.classList.remove('hidden'); iBox.classList.remove('hidden');
-                rList.innerText = "ACCESSING CORNWALL LOCAL AUTHORITY INDEX...";
-                iBox.innerText = "CLAUDE RUNNING GEOGRAPHIC SPATIAL ANALYSIS MODEL SWEEPS...";
+                rList.innerText = "INTERROGATING REGIONAL DEVELOPMENT REGISTERS...";
+                iBox.innerText = "COMPILING GEOGRAPHIC METRICS...";
 
                 const res = await fetch('/api/planning-search', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({postcode:pc}) });
                 const data = await res.json();
@@ -363,12 +373,11 @@ async def serve_dashboard():
                 document.getElementById('p-download-row').classList.remove('hidden');
                 document.getElementById('p-attachment-vault').classList.remove('hidden');
                 
-                // Point directly to Cornwall's native register interface search landing pad
                 document.getElementById('p-attach-list').innerHTML = `
                     <a href="${data.applications.portal_link}" target="_blank" class="block p-3 bg-[#0d0f12] border border-blue-900/50 hover:border-blue-500 rounded text-xs text-gray-300 transition">
-                        <div class="text-blue-400 font-bold mb-1">🏛️ Cornwall Online Register</div>
-                        <p class="text-[10px] text-gray-500 mb-2">Search reference code <strong class="text-white font-mono">${data.applications.reference}</strong> inside the documents tab to view blueprints natively without session errors.</p>
-                        <div class="text-[10px] text-blue-400 font-bold">LAUNCH CORNWALL PORTAL ↗</div>
+                        <div class="text-blue-400 font-bold mb-1">🏛️ Cornwall Council Planning Portal</div>
+                        <p class="text-[10px] text-gray-500 mb-2">Search reference code <strong class="text-white font-mono">${data.applications.reference}</strong> directly within the system index to view dynamic files securely.</p>
+                        <div class="text-[10px] text-blue-400 font-bold">LAUNCH CORNWALL ENGINE ↗</div>
                     </a>
                 `;
             }
@@ -377,7 +386,7 @@ async def serve_dashboard():
                 const txt = document.getElementById(elementId).innerText;
                 const response = await fetch('/api/export-docx', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:txt}) });
                 const blob = await response.blob(); const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = "gluvias_briefing.docx";
+                const a = document.createElement('a'); a.href = url; a.download = "gluvias_executive_briefing.docx";
                 document.body.appendChild(a); a.click(); a.remove();
             }
         </script>
