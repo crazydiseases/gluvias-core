@@ -1,10 +1,19 @@
 FROM python:3.11-slim
+
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends gcc python3-dev && rm -rf /var/lib/apt/lists/*
+
+# Install basic OS system maintenance patches if needed
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /lib/apt/lists/*
+
+# Copy the dependency matrix first to leverage build caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-COPY backend/main.py ./main.py
-ENV PORT=8080
-ENV PYTHONPATH=/app
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+
+# Copy our unified system engine file
+COPY main.py .
+
+EXPOSE 8080
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
