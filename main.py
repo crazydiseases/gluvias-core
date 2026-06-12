@@ -31,7 +31,7 @@ COMPANIES_HOUSE_API_URL = "https://api.company-information.service.gov.uk"
 RAW_KEY = os.getenv("COMPANIES_HOUSE_KEY", "").strip()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
-# 🎯 ACTIVE ALIGNED PRODUCTION TEMP STORAGE VAULT
+# 🎯 CLOUD REPOSITORY VAULT TARGET
 VAULT_BUCKET_NAME = "gluvias-vault-temp"
 
 def get_companies_house_headers():
@@ -86,14 +86,14 @@ async def legal_analysis(req: LegalSearchRequest):
     except Exception as e:
         logger.error(f"Vault bucket reading checkpoint failed: {str(e)}")
 
-    analysis_content = f"## Judicial Evaluation Framework\n- Target application query parameters received: {req.query.upper()}"
+    analysis_content = f"## I. Expert Opinion\n- Target application query parameters received: {req.query.upper()}"
     if anthropic_client:
         try:
             msg = anthropic_client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=0.1,
-                system=f"""You are an elite High Court Judge sitting in the Chancery Division, applying the rigorous, academic, yet thoroughly practical exposition of HHJ Paul Matthews. 
+                system=f"""You are an elite High Court Judge sitting in the Chancery Division, writing with the academic, forensic, and highly practical prose of HHJ Paul Matthews. 
 
                 CRITICAL STRUCTURAL ANALYSIS BOUNDARIES:
                 1. Focus completely on the substantive legal realities of the scenario. Never reference your internal software layout, prompt text limitations, or cloud parameters.
@@ -292,12 +292,14 @@ async def serve_dashboard():
     </head>
     <body class="text-gray-300 min-h-screen flex flex-col">
         <header class="border-b border-gray-800 bg-[#11141a] px-6 py-4 flex justify-between items-center">
-            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // SYSTEM CORE V3.5</h1>
+            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // SYSTEM CORE V3.6</h1>
             <div class="text-[10px] text-green-400 font-bold">INTERACTIVE DEEP VAULT: {VAULT_BUCKET_NAME.upper()} // ACTIVE</div>
         </header>
         <main class="flex-1 max-w-6xl w-full mx-auto p-6 space-y-6">
             <div class="flex space-x-2 border-b border-gray-800">
                 <button id="t-legal" onclick="switchMode('legal')" class="px-4 py-2 text-xs border-t-2 border-red-500 text-red-400 bg-[#11141a]">⚖️ Master Legal Search & Consultation</button>
+                <button id="t-comp" onclick="switchMode('comp')" class="px-4 py-2 text-xs border-t-2 border-transparent text-gray-500">🏢 Corporate Intelligence</button>
+                <button id="t-plan" onclick="switchMode('plan')" class="px-4 py-2 text-xs border-t-2 border-transparent text-gray-500">🗺️ Planning Applications</button>
                 <button id="t-verify" onclick="switchMode('verify')" class="px-4 py-2 text-xs border-t-2 border-transparent text-amber-500">🔍 Inspect Prompt System</button>
             </div>
             
@@ -308,9 +310,7 @@ async def serve_dashboard():
                         <button onclick="runLegalAnalysis()" class="bg-red-600 text-white text-xs font-bold px-5 rounded hover:bg-red-700">EXECUTE REASONING</button>
                     </div>
                 </div>
-                
                 <div id="l-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
-                
                 <div id="consultation-deck" class="bg-[#141822] border border-dashed border-red-900/60 p-4 rounded hidden space-y-4">
                     <div class="text-[11px] font-bold text-red-400 tracking-wider">⚖️ JUDICIAL CONSULTATION BACKCHANNEL (HHJ PAUL MATTHEWS PARADIGM)</div>
                     <div id="followup-history" class="space-y-3 max-h-[300px] overflow-y-auto text-xs font-mono p-2 bg-[#0d0f12] rounded border border-gray-800 hidden"></div>
@@ -319,6 +319,27 @@ async def serve_dashboard():
                         <button onclick="runFollowUpAnalysis()" class="bg-amber-600 text-white text-xs font-bold px-4 rounded hover:bg-amber-700">SUBMIT INQUIRY</button>
                     </div>
                 </div>
+            </div>
+            
+            <div id="view-comp" class="space-y-4 hidden">
+                <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
+                    <div class="flex space-x-2">
+                        <input type="text" id="c-query" placeholder="ENTER UK COMPANY NAME OR REGISTRATION NUMBER..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <button onclick="runCompanySearch()" class="bg-blue-600 text-white text-xs font-bold px-5 rounded hover:bg-blue-700">RUN SEARCH</button>
+                    </div>
+                </div>
+                <div id="c-results-box" class="bg-[#11141a] border border-gray-800 p-4 rounded hidden space-y-2 text-xs"></div>
+                <div id="c-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
+            </div>
+
+            <div id="view-plan" class="space-y-4 hidden">
+                <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
+                    <div class="flex space-x-2">
+                        <input type="text" id="p-postcode" placeholder="ENTER TARGET POSTCODE (e.g., TR11 4DH)..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <button onclick="runPlanningSearch()" class="bg-green-600 text-white text-xs font-bold px-5 rounded hover:bg-green-700">MAP PARCEL RADAR</button>
+                    </div>
+                </div>
+                <div id="p-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
             </div>
             
             <div id="view-verify" class="space-y-4 hidden">
@@ -332,35 +353,35 @@ async def serve_dashboard():
             let currentFullJudgment = "";
 
             function switchMode(m) {{
-                document.getElementById('view-legal').classList.toggle('hidden', m !== 'legal');
-                document.getElementById('view-verify').classList.toggle('hidden', m !== 'verify');
+                const tabs = ['legal', 'comp', 'plan', 'verify'];
+                tabs.forEach(t => {{
+                    document.getElementById('view-' + t).classList.toggle('hidden', t !== m);
+                    const btn = document.getElementById('t-' + t);
+                    if(btn) {{
+                        if(t === m) {{
+                            btn.className = "px-4 py-2 text-xs border-t-2 border-red-500 text-red-400 bg-[#11141a]";
+                        }} else {{
+                            btn.className = "px-4 py-2 text-xs border-t-2 border-transparent text-gray-500";
+                        }}
+                    }}
+                }});
             }}
             
             async function runLegalAnalysis() {{
                 const q = document.getElementById('l-query').value;
                 if(!q) return;
                 originalQuerySaved = q;
-                
                 const rBox = document.getElementById('l-report-box');
                 const cDeck = document.getElementById('consultation-deck');
                 const fHist = document.getElementById('followup-history');
                 
-                rBox.classList.remove('hidden'); 
-                rBox.innerText = "OPENING SECURE SOURCE MATERIAL VAULT AND COMPILING JUDICIAL DIRECTIVE ANALYSIS...";
-                cDeck.classList.add('hidden');
-                fHist.innerHTML = "";
-                fHist.classList.add('hidden');
+                rBox.classList.remove('hidden'); rBox.innerText = "OPENING SECURE SOURCE MATERIAL VAULT AND COMPILING ANALYSIS...";
+                cDeck.classList.add('hidden'); fHist.innerHTML = ""; fHist.classList.add('hidden');
                 
-                const res = await fetch('/api/legal-analysis', {{ 
-                    method:'POST', 
-                    headers:{{'Content-Type':'application/json'}}, 
-                    body:JSON.stringify({{query:q}}) 
-                }});
+                const res = await fetch('/api/legal-analysis', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{query:q}}) }});
                 const data = await res.json(); 
                 currentFullJudgment = data.analysis_report;
                 rBox.innerText = currentFullJudgment;
-                
-                // Slide open the interactive consultation interface
                 cDeck.classList.remove('hidden');
             }}
 
@@ -368,14 +389,11 @@ async def serve_dashboard():
                 const fInput = document.getElementById('f-query');
                 const fText = fInput.value;
                 if(!fText) return;
-                
                 const fHist = document.getElementById('followup-history');
                 fHist.classList.remove('hidden');
                 
-                // Append user message representation to interface view
                 fHist.innerHTML += `<div class="text-gray-400 border-b border-gray-900 pb-1 mt-2"><strong>Counsel:</strong> ${{fText}}</div>`;
                 fInput.value = "";
-                
                 const loadingId = "load-" + Date.now();
                 fHist.innerHTML += `<div id="${{loadingId}}" class="text-amber-400 animate-pulse"><strong>Judicial Processing:</strong> Extracting bucket assets and matching contextual citations...</div>`;
                 fHist.scrollTop = fHist.scrollHeight;
@@ -383,21 +401,44 @@ async def serve_dashboard():
                 const res = await fetch('/api/legal-followup', {{
                     method: 'POST',
                     headers: {{'Content-Type':'application/json'}},
-                    body: JSON.stringify({{
-                        original_query: originalQuerySaved,
-                        previous_judgment: currentFullJudgment,
-                        follow_up_instruction: fText
-                    }})
+                    body: JSON.stringify({{original_query: originalQuerySaved, previous_judgment: currentFullJudgment, follow_up_instruction: fText}})
                 }});
                 const data = await res.json();
-                
-                // Clean loading entry and mount response block
                 document.getElementById(loadingId).remove();
                 fHist.innerHTML += `<div class="text-gray-200 bg-[#161b26] p-3 rounded mt-1 border-l-2 border-amber-500 whitespace-pre-line font-sans text-sm">${{data.followup_report}}</div>`;
-                
-                // Accumulate the history thread into the assistant session memory wrapper
-                currentFullJudgment += "\n\n[Follow-up Directive]: " + fText + "\n" + data.followup_report;
+                currentFullJudgment += "\\n\\n[Follow-up Directive]: " + fText + "\\n" + data.followup_report;
                 fHist.scrollTop = fHist.scrollHeight;
+            }}
+
+            async function runCompanySearch() {{
+                const q = document.getElementById('c-query').value;
+                const rBox = document.getElementById('c-results-box');
+                rBox.classList.remove('hidden'); rBox.innerText = "Querying Live Companies House Registry...";
+                const res = await fetch('/api/company-search?q=' + encodeURIComponent(q));
+                const data = await res.json();
+                rBox.innerHTML = "";
+                if(data.candidates.length === 0) {{ rBox.innerText = "No entities found."; return; }}
+                data.candidates.forEach(c => {{
+                    rBox.innerHTML += `<div class="flex justify-between items-center bg-[#0d0f12] p-2 rounded border border-gray-800"><span class="text-white font-bold">${{c.name}} (${{c.crn}})</span><button onclick="pullCompanyIntelligence('${{c.crn}}')" class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded hover:bg-blue-700">EXTRACT FORENSICS</button></div>`;
+                }});
+            }}
+
+            async function pullCompanyIntelligence(crn) {{
+                const rBox = document.getElementById('c-report-box');
+                rBox.classList.remove('hidden'); rBox.innerText = "Compiling registry footprints and writing asset report...";
+                const res = await fetch('/api/company-intelligence?crn=' + crn);
+                const data = await res.json();
+                rBox.innerText = data.intelligence_report;
+            }}
+
+            async function runPlanningSearch() {{
+                const p = document.getElementById('p-postcode').value;
+                const rBox = document.getElementById('p-report-box');
+                rBox.classList.remove('hidden'); rBox.innerText = "Mapping coordinates against localized planning data registries...";
+                const res = await fetch('/api/planning-search', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{postcode:p}}) }});
+                const data = await res.json();
+                const app = data.applications;
+                rBox.innerText = `[TARGET FIELD RADAR APPLICATIONS]:\\nReference: ${{app.reference}}\\nStatus: ${{app.status}}\\nAddress: ${{app.address}}\\n\\n${{app.parsed_intelligence}}`;
             }}
         </script>
     </body>
