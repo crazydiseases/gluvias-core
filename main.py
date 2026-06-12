@@ -31,7 +31,7 @@ COMPANIES_HOUSE_API_URL = "https://api.company-information.service.gov.uk"
 RAW_KEY = os.getenv("COMPANIES_HOUSE_KEY", "").strip()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
-# 🎯 CLOUD REPOSITORY VAULT TARGET
+# 🎯 ACTIVE ALIGNED PRODUCTION STORAGE VAULT
 VAULT_BUCKET_NAME = "gluvias-vault-temp"
 
 def get_companies_house_headers():
@@ -93,12 +93,13 @@ async def legal_analysis(req: LegalSearchRequest):
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=0.1,
-                system=f"""You are an elite High Court Judge sitting in the Chancery Division, writing with the academic, forensic, and highly practical prose of HHJ Paul Matthews. 
+                system=f"""You are an elite High Court Judge sitting in the Chancery Division. Your style is intensely academic, forensically detailed, and rigorously practical, precisely emulating the prose architecture found in judgments like EWHC 996 (Ch). 
 
-                CRITICAL STRUCTURAL ANALYSIS BOUNDARIES:
+                CRITICAL OPERATIONAL & ANONYMITY BOUNDARIES:
                 1. Focus completely on the substantive legal realities of the scenario. Never reference your internal software layout, prompt text limitations, or cloud parameters.
-                2. You must evaluate the query by grounding your logic explicitly in the governing statutes, precedents, and the distinct volumes currently present in your active cloud repository.
-                3. Every individual sentence step or narrative paragraph within your output commentary MUST begin with a hyphen list marker and a space (e.g., "- Applying the long-standing principles..."). Never output un-bulleted, plain prose blocks.
+                2. DO NOT mention or print the proper name of any specific judge (e.g., do not say 'Paul Matthews' or mention who authored the baseline style). Maintain a strictly objective judicial voice.
+                3. CITATION ARCHITECTURE: Whenever you ground your logic in or refer to a specific chapter, law textbook, or volume present in your repository workspace, you MUST provide the exact paragraph or section number for citation tracking (e.g., 'Vol. 2, Para [14.02]'). Never offer a broad reference without specific pinpoint locations.
+                4. Every individual sentence step or narrative paragraph within your output commentary MUST begin with a hyphen list marker and a space (e.g., "- Applying the long-standing principles..."). Never output un-bulleted, plain prose blocks.
 
                 SECURE SOURCE MATERIAL INJECTED DIRECTLY FROM YOUR WORKSPACE STORAGE BUCKET:
                 {bucket_context_summary}
@@ -137,13 +138,14 @@ async def legal_followup(req: LegalFollowUpRequest):
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=0.2,
-                system=f"""You are an elite High Court Judge sitting in the Chancery Division, maintaining the academic, forensic, and highly practical prose of HHJ Paul Matthews.
+                system=f"""You are an elite High Court Judge sitting in the Chancery Division, maintaining an academic, forensic, and highly practical prose architecture drawn from Chancery standards like EWHC 996 (Ch).
                 
-                You are conducting an interactive consultation. You are being asked to expand on, verify, or drill deeper into an initial framework that you already handed down.
+                You are conducting an interactive consultation to expand on, verify, or drill deeper into an initial framework that you already handed down.
                 
-                CRITICAL STRUCTURAL BOUNDARIES:
-                1. Focus entirely on answering the follow-up request using your vault resource documents.
-                2. Every standalone sentence or paragraph step within your follow-up commentary MUST start with a hyphen list marker and a space (e.g., "- Further to this point, case law demonstrates..."). Never write un-bulleted blocks.
+                CRITICAL OPERATIONAL & ANONYMITY BOUNDARIES:
+                1. DO NOT reference or write the name 'Paul Matthews' or any individual judge anywhere in the text.
+                2. CITATION REQUIREMENT: Every expansion referencing textbook volumes or statutory rules from the workspace repository MUST cite the exact paragraph, section, or line number reference. Broad summaries are insufficient.
+                3. Every standalone sentence or paragraph step within your follow-up commentary MUST start with a hyphen list marker and a space (e.g., "- Further to this point, case law demonstrates..."). Never write un-bulleted blocks.
                 
                 SECURE SOURCE MATERIAL AVAILABLE IN YOUR WORKSPACE STORAGE BUCKET:
                 {bucket_context_summary}""",
@@ -292,8 +294,8 @@ async def serve_dashboard():
     </head>
     <body class="text-gray-300 min-h-screen flex flex-col">
         <header class="border-b border-gray-800 bg-[#11141a] px-6 py-4 flex justify-between items-center">
-            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // SYSTEM CORE V3.6</h1>
-            <div class="text-[10px] text-green-400 font-bold">INTERACTIVE DEEP VAULT: {VAULT_BUCKET_NAME.upper()} // ACTIVE</div>
+            <h1 class="text-white font-bold tracking-widest text-sm">GLUVIAS // SYSTEM CORE V3.7</h1>
+            <div class="text-[10px] text-green-400 font-bold">INTERACTIVE PINPOINT DEEP VAULT: {VAULT_BUCKET_NAME.upper()} // ACTIVE</div>
         </header>
         <main class="flex-1 max-w-6xl w-full mx-auto p-6 space-y-6">
             <div class="flex space-x-2 border-b border-gray-800">
@@ -312,10 +314,10 @@ async def serve_dashboard():
                 </div>
                 <div id="l-report-box" class="bg-[#11141a] border border-gray-800 p-6 rounded hidden text-sm whitespace-pre-line text-gray-300 font-sans leading-relaxed"></div>
                 <div id="consultation-deck" class="bg-[#141822] border border-dashed border-red-900/60 p-4 rounded hidden space-y-4">
-                    <div class="text-[11px] font-bold text-red-400 tracking-wider">⚖️ JUDICIAL CONSULTATION BACKCHANNEL (HHJ PAUL MATTHEWS PARADIGM)</div>
+                    <div class="text-[11px] font-bold text-red-400 tracking-wider">⚖️ INTERACTIVE CONSULTATION BACKCHANNEL (PINPOINT CITATION MATRIX)</div>
                     <div id="followup-history" class="space-y-3 max-h-[300px] overflow-y-auto text-xs font-mono p-2 bg-[#0d0f12] rounded border border-gray-800 hidden"></div>
                     <div class="flex space-x-2">
-                        <input type="text" id="f-query" placeholder="ASK FOLLOW-UP QUESTION (e.g., 'What specific case law matches Section II?')" class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <input type="text" id="f-query" placeholder="ASK FOLLOW-UP QUESTION (e.g., 'Pinpoint the exact text paragraphs matching Section II')" class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
                         <button onclick="runFollowUpAnalysis()" class="bg-amber-600 text-white text-xs font-bold px-4 rounded hover:bg-amber-700">SUBMIT INQUIRY</button>
                     </div>
                 </div>
@@ -335,7 +337,7 @@ async def serve_dashboard():
             <div id="view-plan" class="space-y-4 hidden">
                 <div class="bg-[#11141a] border border-gray-800 p-4 rounded">
                     <div class="flex space-x-2">
-                        <input type="text" id="p-postcode" placeholder="ENTER TARGET POSTCODE (e.g., TR11 4DH)..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
+                        <input type="text" id="p-postcode" placeholder="ENTER TARGET POSTCODE..." class="flex-1 bg-[#0d0f12] border border-gray-700 p-2 rounded text-xs text-white">
                         <button onclick="runPlanningSearch()" class="bg-green-600 text-white text-xs font-bold px-5 rounded hover:bg-green-700">MAP PARCEL RADAR</button>
                     </div>
                 </div>
@@ -375,7 +377,7 @@ async def serve_dashboard():
                 const cDeck = document.getElementById('consultation-deck');
                 const fHist = document.getElementById('followup-history');
                 
-                rBox.classList.remove('hidden'); rBox.innerText = "OPENING SECURE SOURCE MATERIAL VAULT AND COMPILING ANALYSIS...";
+                rBox.classList.remove('hidden'); rBox.innerText = "OPENING SECURE REGISTRY VAULT AND EXTRACTING PINPOINT PARAGRAPH REFERENCES...";
                 cDeck.classList.add('hidden'); fHist.innerHTML = ""; fHist.classList.add('hidden');
                 
                 const res = await fetch('/api/legal-analysis', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{query:q}}) }});
@@ -395,7 +397,7 @@ async def serve_dashboard():
                 fHist.innerHTML += `<div class="text-gray-400 border-b border-gray-900 pb-1 mt-2"><strong>Counsel:</strong> ${{fText}}</div>`;
                 fInput.value = "";
                 const loadingId = "load-" + Date.now();
-                fHist.innerHTML += `<div id="${{loadingId}}" class="text-amber-400 animate-pulse"><strong>Judicial Processing:</strong> Extracting bucket assets and matching contextual citations...</div>`;
+                fHist.innerHTML += `<div id="${{loadingId}}" class="text-amber-400 animate-pulse"><strong>Processing Backchannel:</strong> Isolating textbook volumes and auditing exact paragraph thresholds...</div>`;
                 fHist.scrollTop = fHist.scrollHeight;
 
                 const res = await fetch('/api/legal-followup', {{
