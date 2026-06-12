@@ -185,18 +185,20 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
         officer_lines = []
         for off in o_res.json().get("items", []) if o_res.status_code == 200 else []:
             name = off.get("name", "Unknown Officer").upper()
+            role = off.get("officer_role", "DIRECTOR").upper()
+            status = "RESIGNED" if off.get("resigned_on") else "ACTIVE"
             dob_dict = off.get("date_of_birth", {})
             dob_str = "DOB UNRECORDED"
             if dob_dict.get("month") and dob_dict.get("year"):
                 dob_str = f"DOB: {dob_dict.get('month')}/{dob_dict.get('year')}"
-            officer_lines.append(f"- Officer: {name} ({dob_str})")
+            officer_lines.append(f"- {role} ({status}): {name} | {dob_str}")
             
         filing_lines = []
         for f in f_res.json().get("items", []) if f_res.status_code == 200 else []:
             filing_lines.append(f"- Date: {f.get('date')} | Type: {f.get('type','').upper()} | {f.get('description','').upper().replace('-', ' ')}")
 
         forensic_payload = f"Identity:\nName: {comp_name}\nCRN: {crn}\nAddress: {clean_address}\n\nOfficers:\n" + "\n".join(officer_lines) + "\n\nTimeline:\n" + "\n".join(filing_lines)
-        report_content = forensic_payload
+        report_content = f"⚠️ ANTHROPIC COGNITIVE ENGINE OFFLINE / FALLBACK ACTIVE:\n\n{forensic_payload}"
 
         if anthropic_client:
             msg = anthropic_client.messages.create(
