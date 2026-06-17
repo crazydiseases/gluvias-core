@@ -1,18 +1,15 @@
 import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 app = FastAPI(title="GLUVIAS // SPATIAL CONSOLE")
 
-# Dynamically calculate the absolute path to the root directory
-# This moves up one level from backend/main.py to find index.html at the project root
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HTML_PATH = os.path.join(BASE_DIR, "index.html")
+# 1. Mount the root folder to serve static files (like index.html) seamlessly
+# This handles the asset pathing natively across Railway's architecture
+app.mount("/static", StaticFiles(directory="."), name="static")
 
 @app.get("/")
 async def serve_workspace():
-    # Defensive check: if the file somehow isn't there, display a clear error instead of a 404
-    if not os.path.exists(HTML_PATH):
-        return {"error": f"index.html not found at expected path: {HTML_PATH}"}
-        
-    return FileResponse(HTML_PATH)
+    # Serve index.html straight from the root project directory
+    return FileResponse("index.html")
