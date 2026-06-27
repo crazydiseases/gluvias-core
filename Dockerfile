@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 
 # Copy compiled static assets from Stage 1 into the location expected by main.py
-COPY --from=frontend-builder /app/frontend/out ./
+COPY --from=frontend-builder /app/frontend/out ./static_frontend
 
 EXPOSE 8080
 
