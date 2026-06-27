@@ -1,28 +1,27 @@
-# === STAGE 1: COMPiLE FRONTEND ===
-FROM node:20-slim AS frontend-builder
+# === STAGE 1: BUILD THE NEXT.JS FRONTEND ===
+FROM node:18-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
-RUN npm run build
+# Build the Next.js app as a static export
+RUN npx next build
 
-# === STAGE 2: BUILD UNiFiED SERVER ===
+# === STAGE 2: BUILD THE FASTAPI BACKEND & SERVE ASSETS ===
 FROM python:3.11-slim
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
+# Install system and python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend files
 COPY main.py .
+COPY dashboard.html .
+COPY index.html .
 
-# Copy compiled static assets from Stage 1 into the location expected by main.py
+# Copy the compiled static assets from Stage 1 into a folder FastAPI can see
 COPY --from=frontend-builder /app/frontend/out ./static_frontend
 
 EXPOSE 8080
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "main.py:app", "--host", "0.0.0.0", "--port", "8080"]
