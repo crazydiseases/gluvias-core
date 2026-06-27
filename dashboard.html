@@ -119,12 +119,35 @@
             container.classList.remove('hidden');
 
             try {
-                const res = await fetch(`/api/company-search?q=${encodeURIComponent(q)}`);
+                // Route directly to your master-intel engine with mode context
+                const res = await fetch(`/api/master-intel?q=${encodeURIComponent(q)}&mode=corp`);
                 const data = await res.json();
+                
+                // If the backend bypassed straight to the final intelligence report payload
+                if (data.fact_table && data.intelligence_report) {
+                    container.classList.add('hidden');
+                    const yieldArea = document.getElementById('intelligence-yield');
+                    yieldArea.classList.remove('hidden');
+                    
+                    document.getElementById('fact-body').innerHTML = `
+                        <div class="border-b border-gray-800 pb-1"><span class="text-gray-500 block">ENTITY:</span> <span class="text-white font-bold">${data.fact_table.name}</span></div>
+                        <div class="border-b border-gray-800 pb-1"><span class="text-gray-500 block">NUMBER:</span> <span class="text-green-400">${data.fact_table.crn}</span></div>
+                        <div class="border-b border-gray-800 pb-1"><span class="text-gray-500 block">STATUS:</span> <span class="text-white">${data.fact_table.status}</span></div>
+                        <div class="border-b border-gray-800 pb-1"><span class="text-gray-500 block">TIMELINE:</span> <span class="text-white">${data.fact_table.age}</span></div>
+                        <div><span class="text-gray-500 block">REGISTERED SEAT:</span> <span class="text-gray-400 text-[11px]">${data.fact_table.address}</span></div>
+                    `;
+                    
+                    document.getElementById('report-body').innerText = data.intelligence_report;
+                    currentReportTitle = data.fact_table.name.replace(/\s+/g, '_');
+                    currentReportContent = data.intelligence_report;
+                    return;
+                }
+
                 if(!data.candidates || data.candidates.length === 0) {
                     container.innerHTML = `<div class="text-xs text-red-400 font-mono py-2">NO CORPORATE BODY MATCHES IDENTIFIED.</div>`;
                     return;
                 }
+                
                 container.innerHTML = data.candidates.map(c => `
                     <div onclick="fetchIntelligence('${c.crn}')" class="p-3 bg-[#0d0f12] border border-gray-800 hover:border-green-500 rounded flex justify-between items-center cursor-pointer transition-all">
                         <div>
