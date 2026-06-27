@@ -21,7 +21,7 @@
         }
     </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght=300;400;500;700&display=swap');
         body { font-family: 'JetBrains Mono', monospace; background-color: #050507; }
         .glow-border { box-shadow: 0 0 15px rgba(225, 29, 72, 0.15); }
     </style>
@@ -45,7 +45,7 @@
                 🏢 Corporate Intelligence
             </button>
             <button onclick="switchTab('legal')" id="tab-btn-legal" class="px-5 py-2.5 text-xs font-semibold tracking-wider uppercase border-t-2 border-transparent text-zinc-500 hover:text-zinc-300 bg-transparent rounded-t transition-all">
-                ⚖️ Legal Analysis
+                📚 Legal Textbook Research
             </button>
             <button onclick="switchTab('planning')" id="tab-btn-planning" class="px-5 py-2.5 text-xs font-semibold tracking-wider uppercase border-t-2 border-transparent text-zinc-500 hover:text-zinc-300 bg-transparent rounded-t transition-all">
                 🗺️ Planning Applications
@@ -87,17 +87,17 @@
 
         <div id="section-legal" class="space-y-6 hidden">
             <div class="bg-[#0d0f14] border border-zinc-800 rounded p-6 glow-border">
-                <h2 class="text-sm font-bold text-white tracking-wider uppercase mb-4">Litigation & Structural Legal Scan</h2>
+                <h2 class="text-sm font-bold text-white tracking-wider uppercase mb-4">Google Cloud Vault Textual Deep Scan (Textbooks & Treatises)</h2>
                 <div class="flex space-x-3">
-                    <input type="text" id="legal-query" placeholder="ENTER ENTITY NAME FOR LEGAL CASE SCAN..." class="flex-1 bg-[#050507] border border-zinc-700 rounded px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-crimsonGlow transition-all">
+                    <input type="text" id="legal-query" placeholder="ENTER LEGAL CONCEPT, PRECEDENT, OR CHAPTER TOPIC TO QUERY..." class="flex-1 bg-[#050507] border border-zinc-700 rounded px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-crimsonGlow transition-all">
                     <button onclick="executeLegalAnalysis()" class="bg-crimsonDark hover:bg-crimsonGlow text-white font-bold px-6 py-3 rounded text-xs tracking-widest uppercase transition-all">
-                        RUN LEGAL AUDIT
+                        QUERY VAULT INDEX
                     </button>
                 </div>
             </div>
             <div id="legal-yield" class="bg-[#0d0f14] border border-zinc-800 rounded p-6 hidden">
-                <h3 class="text-xs font-bold text-white tracking-wider uppercase mb-4 pb-2 border-b border-zinc-800">Legal Records & Case Filings</h3>
-                <div id="legal-results-body" class="space-y-4 text-sm font-sans text-zincText"></div>
+                <h3 class="text-xs font-bold text-white tracking-wider uppercase mb-4 pb-2 border-b border-zinc-800">Synthesized Textbook Literature Findings</h3>
+                <div id="legal-results-body" class="space-y-4 text-sm font-sans text-zincText font-mono whitespace-pre-line leading-relaxed"></div>
             </div>
         </div>
 
@@ -257,19 +257,19 @@
             const body = document.getElementById('legal-results-body');
             
             yieldArea.classList.remove('hidden');
-            body.innerHTML = `<div class="text-xs text-zinc-500 font-mono animate-pulse">INTERROGATING HIGH COURT REGISTRIES & LITIGATION DATABASES...</div>`;
+            body.innerHTML = `<div class="text-xs text-zinc-500 font-mono animate-pulse">STREAMING EMBEDDINGS VECTOR SEARCH CROSS GOOGLE CLOUD STORAGE VAULT TEXTBOOKS...</div>`;
 
             try {
                 const res = await fetch(`/api/master-intel?q=${encodeURIComponent(q)}&mode=legal`);
                 const data = await res.json();
                 
                 if (data.legal_report) {
-                    body.innerHTML = `<div class="whitespace-pre-line leading-relaxed">${data.legal_report}</div>`;
+                    body.innerHTML = data.legal_report;
                 } else {
-                    body.innerHTML = `<div class="text-xs text-zinc-500 font-mono">No corporate active litigation or structural case links tracked for this entity query.</div>`;
+                    body.innerHTML = `<div class="text-xs text-zinc-500 font-mono">No matching literature references or analysis blocks generated from the textbook vault.</div>`;
                 }
             } catch (e) {
-                body.innerHTML = `<div class="text-xs text-crimsonGlow font-mono">LEGAL INDEX SEARCH ERROR: ${e.message}</div>`;
+                body.innerHTML = `<div class="text-xs text-crimsonGlow font-mono">GOOGLE CLOUD VAULT DISCOVERY SCAN EXCEPTION: ${e.message}</div>`;
             }
         }
 
