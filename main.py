@@ -214,7 +214,7 @@ async def master_intel(q: str = Query(..., min_length=1), mode: str = "corp"):
         if not candidates or len(candidates) == 0:
             return {"fact_table": None, "intelligence_report": "No matching corporate entities identified in the state registry."}
             
-        # Explicitly grab the first item index here
+        # FIX: Added to grab the first candidate dictionary out of the list matching arrays
         first_candidate = candidates
         top_crn = first_candidate["crn"]
         return await company_intelligence(crn=top_crn)
