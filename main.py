@@ -235,3 +235,28 @@ async def serve_frontend(catchall: str = ""):
             return f.read()
             
     raise HTTPException(status_code=500, detail="Frontend asset tree desynchronized. File missing.")
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+@app.get("/{catchall:path}")
+async def serve_frontend(catchall: str = ""):
+    if catchall.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API route not found")
+        
+    file_path = os.path.join("static_frontend", catchall)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return FileResponse(file_path)
+        
+    html_fallback = f"{file_path}.html"
+    if os.path.exists(html_fallback) and os.path.isfile(html_fallback):
+        return FileResponse(html_fallback)
+        
+    default_index = os.path.join("static_frontend", "index.html")
+    if os.path.exists(default_index):
+        return FileResponse(default_index)
+        
+    raise HTTPException(status_code=500, detail="Frontend asset tree desynchronized.")
+
+if os.path.exists("static_frontend/_next"):
+    app.mount("/_next", StaticFiles(directory="static_frontend/_next"), name="next_assets")
