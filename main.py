@@ -229,18 +229,12 @@ async def serve_frontend(catchall: str = ""):
             with open(path, "r") as f:
                 return f.read()
                 
-    # Ultimate fallback to main index.html if it exists
-    if os.path.exists("index.html"):
-        with open("index.html", "r") as f:
-            return f.read()
-            
-    raise HTTPException(status_code=500, detail="Frontend asset tree desynchronized. File missing.")
-
-from fastapi.staticfiles import StaticFiles
+ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 @app.get("/{catchall:path}")
 async def serve_frontend(catchall: str = ""):
+    # Do not intercept any backend API endpoints
     if catchall.startswith("api/"):
         raise HTTPException(status_code=404, detail="API route not found")
         
