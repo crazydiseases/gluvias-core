@@ -80,7 +80,7 @@ async def legal_analysis(req: LegalSearchRequest):
 
     try:
         msg = anthropic_client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-4.6-sonnet",
             max_tokens=3000,
             temperature=0.1,
             system=f"""You are an elite senior legal counsel. Your communication style is fundamentally fluid, natural, and conversational, balancing analytical precision with absolute linguistic clarity. Avoid artificial formatting constraints, structural bulleted lists, and rigid outlines. Deliver your advisory findings as a continuous, highly sophisticated strategic partner directly engaging an active client.
@@ -164,7 +164,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
             forensic_payload = f"Identity:\nName: {comp_name}\nCRN: {crn}\nAddress: {clean_address}\n\nOfficers:\n" + "\n".join(officer_lines) + "\n\nTimeline:\n" + "\n".join(filing_lines)
             
             msg = anthropic_client.messages.create(
-                model="claude-sonnet-4-6",
+                model="claude-4.6-sonnet",
                 max_tokens=3500,
                 temperature=0.1,
                 system="""You are a premier senior forensic corporate investigator executing detailed corporate intelligence audits.
