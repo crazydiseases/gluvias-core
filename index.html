@@ -31,13 +31,13 @@
 
     <div class="w-full flex justify-between items-center border-b border-zinc-800 pb-4 mb-6">
         <div class="flex items-center space-x-6 text-xs tracking-widest font-bold">
-            <span class="text-white font-black text-sm">GLUVIAS // INTELLIGENCE CORE v3.2</span>
-            <span id="tab-legal" onclick="setSearchMode('legal')" class="text-crimsonGlow cursor-pointer border-b border-crimsonGlow pb-1 transition-all">[LEGISLATION //]</span>
-            <span id="tab-corp" onclick="setSearchMode('corp')" class="text-zinc-600 cursor-pointer hover:text-crimsonGlow transition-colors pb-1">[COMPANIES HOUSE //]</span>
-            <span id="tab-plan" onclick="setSearchMode('plan')" class="text-zinc-600 cursor-pointer hover:text-crimsonGlow transition-colors pb-1">[PLANNING METADATA //]</span>
+            <span class="text-white font-black text-sm">GLUVIAS // INTELLIGENCE CORE</span>
+            <span class="text-zinc-600 cursor-pointer hover:text-crimsonGlow transition-colors">[LEGISLATION //]</span>
+            <span class="text-zinc-600 cursor-pointer hover:text-crimsonGlow transition-colors">[CASE LAW //]</span>
+            <span class="text-zinc-600 cursor-pointer hover:text-crimsonGlow transition-colors">[CPR //]</span>
         </div>
         <div class="border border-crimsonDark px-3 py-1 rounded text-[10px] tracking-wider text-crimsonGlow font-bold animate-pulse">
-            CORE PIPELINE ACTIVE
+            INTERNAL SESSION ACTIVE
         </div>
     </div>
 
@@ -45,35 +45,37 @@
         
         <div class="lg:col-span-5 bg-deck border border-zinc-800 rounded p-5 flex flex-col space-y-4">
             <div>
-                <label id="inputLabel" class="text-[10px] tracking-widest text-white uppercase block mb-1 font-bold">// Pure Master Legal Search Framework</label>
-                <textarea id="queryInput" rows="6" class="w-full bg-canvas border border-zinc-800 rounded p-3 text-xs font-mono text-white focus:outline-none focus:border-crimsonGlow transition-all resize-none" placeholder="Describe the master legal problem framework, core liabilities, or rule violations..."></textarea>
+                <label class="text-[10px] tracking-widest text-white uppercase block mb-1 font-bold">Core Advisory Query Input</label>
+                <textarea id="queryInput" rows="5" class="w-full bg-canvas border border-zinc-800 rounded p-3 text-xs font-mono text-white focus:outline-none focus:border-crimsonGlow transition-all resize-none" placeholder="Enter corporate restructuring, liability scenarios, or structural registry issues..."></textarea>
             </div>
             
-            <button onclick="executeIntelligencePipeline()" class="w-full bg-crimsonDark hover:bg-crimsonGlow text-white text-xs tracking-widest uppercase font-bold py-3 rounded transition-all duration-150 border border-transparent hover:shadow-[0_0_15px_rgba(225,29,72,0.4)]">
-                Run Engine Pipeline
+            <button onclick="executeLegalAnalysis()" class="w-full bg-crimsonDark hover:bg-crimsonGlow text-white text-xs tracking-widest uppercase font-bold py-3 rounded transition-all duration-150 border border-transparent hover:shadow-[0_0_15px_rgba(225,29,72,0.4)]">
+                Execute Intelligence Routine
             </button>
 
-            <div id="companyVerificationSection" class="border-t border-zinc-800 pt-4 hidden">
-                <label class="text-[10px] tracking-widest text-white uppercase block mb-2 font-bold">Candidate Registry Verification Matches</label>
-                <div id="verificationResultsDeck" class="space-y-2 max-h-48 overflow-y-auto">
-                    <div class="text-xs text-zinc-600 italic font-mono">Awaiting primary scan deployment execution parameters...</div>
+            <div class="border-t border-zinc-800 pt-4">
+                <label class="text-[10px] tracking-widest text-white uppercase block mb-2 font-bold">Registry Verification Router (Stage 1)</label>
+                <div class="flex space-x-2">
+                    <input type="text" id="companySearchInput" class="flex-1 bg-canvas border border-zinc-800 rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-crimsonGlow" placeholder="Enter Company Name or CRN...">
+                    <button onclick="executeCompanySearch()" class="bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-mono px-4 rounded transition-all">Verify</button>
                 </div>
+                <div id="verificationResultsDeck" class="mt-3 space-y-2 max-h-40 overflow-y-auto hidden"></div>
             </div>
         </div>
 
         <div class="lg:col-span-7 flex flex-col space-y-4">
-            <div class="w-full bg-deck border border-zinc-800 rounded p-5 flex-1 min-h-[480px] flex flex-col">
+            <div class="w-full bg-deck border border-zinc-800 rounded p-5 flex-1 min-h-[450px] flex flex-col">
                 <div class="flex items-center justify-between border-b border-zinc-800 pb-2 mb-4">
-                    <div id="outputHeader" class="text-xs font-bold text-white tracking-wider uppercase">// Engine Response Pipeline</div>
+                    <div class="text-xs font-bold text-white tracking-wider uppercase">Live Output Stream Console</div>
                     <div id="engineBadge" class="text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-bold uppercase">Idle</div>
                 </div>
-                <div id="outputWindow" class="flex-1 text-xs text-zincText leading-relaxed whitespace-pre-wrap font-mono overflow-y-auto max-h-[420px]">System ready. Awaiting parameters. System context layer standing by.</div>
+                <div id="outputWindow" class="flex-1 text-xs text-zincText leading-relaxed whitespace-pre-wrap font-mono overflow-y-auto max-h-[400px]">System ready. Awaiting routing initialization...</div>
             </div>
 
             <div class="w-full bg-black border border-crimsonDark/40 rounded p-4">
                 <div class="text-[10px] text-crimsonGlow tracking-widest uppercase font-bold mb-2 flex items-center space-x-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-crimsonGlow inline-block"></span>
-                    <span>System Debug Logger Panel</span>
+                    <span>System Debug Logger Panel (#debugWindow)</span>
                 </div>
                 <pre id="debugWindow" class="text-[11px] text-zinc-500 font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">No telemetry anomalies detected.</pre>
             </div>
@@ -82,13 +84,12 @@
 
     <script>
         const API_BASE = window.location.origin;
-        let currentMode = 'legal';
 
         function logDebug(message, isError = false) {
             const el = document.getElementById("debugWindow");
-            // FIXED: Using safe ISO extraction to avoid breaking substring arrays
-            const now = new Date();
-            const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
+            // FIXED: Extracted clean, safe ISO string tracking variables without using the broken substring on arrays method
+            const rawDate = new Date();
+            const timestamp = rawDate.toISOString().replace('T', ' ').slice(0, 19);
             if (isError) {
                 el.innerHTML = `<span class="text-crimsonGlow font-bold">[CRITICAL_ERR ${timestamp}]: ${message}</span>`;
             } else {
@@ -96,128 +97,84 @@
             }
         }
 
-        function setSearchMode(mode) {
-            currentMode = mode;
-            const tabs = { legal: 'tab-legal', corp: 'tab-corp', plan: 'tab-plan' };
-            const label = document.getElementById("inputLabel");
-            const textarea = document.getElementById("queryInput");
-            const compSection = document.getElementById("companyVerificationSection");
-
-            // Reset tab styles
-            Object.values(tabs).forEach(id => {
-                const el = document.getElementById(id);
-                el.className = "text-zinc-600 cursor-pointer hover:text-crimsonGlow transition-colors pb-1";
-            });
-
-            // Activate chosen tab style
-            document.getElementById(tabs[mode]).className = "text-crimsonGlow cursor-pointer border-b border-crimsonGlow pb-1 font-bold transition-all";
-
-            if (mode === 'corp') {
-                label.innerText = "// Corporate Verification Query Input";
-                textarea.placeholder = "Enter corporate registration names or CRN keys...";
-                compSection.classList.remove("hidden");
-            } else if (mode === 'plan') {
-                label.innerText = "// Spatial & Planning Track Modifier";
-                textarea.placeholder = "Enter area coordinates or spatial track tags...";
-                compSection.classList.add("hidden");
-            } else {
-                label.innerText = "// Pure Master Legal Search Framework";
-                textarea.placeholder = "Describe the master legal problem framework, core liabilities, or rule violations...";
-                compSection.classList.add("hidden");
-            }
-            logDebug(`Router shifted pipeline alignment state to context mode: ${mode.toUpperCase()}`);
-        }
-
-        async function executeIntelligencePipeline() {
+        async function executeLegalAnalysis() {
             const query = document.getElementById("queryInput").value.trim();
             if (!query) return;
 
             const out = document.getElementById("outputWindow");
             const badge = document.getElementById("engineBadge");
-            const deck = document.getElementById("verificationResultsDeck");
             
-            out.innerText = `Querying operational nodes and executing ${currentMode.toUpperCase()} engine core sequences...`;
-            badge.innerText = "ORCHESTRATOR // RUNNING";
+            out.innerText = "Initializing live advisory extraction pipeline via Claude Sonnet...";
+            badge.innerText = "SONNET // RUNNING";
             badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-crimsonDark text-white font-bold uppercase animate-pulse";
-            logDebug(`Streaming interface parameters directly into network pipeline.`);
+            logDebug("Piping query stream directly to intelligence core.");
 
             try {
-                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(query)}&mode=${currentMode}`);
-                if (!res.ok) throw new Error(`HTTP Matrix Disruption: ${res.status}`);
+                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(query)}&mode=legal`);
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
 
                 const data = await res.json();
-
-                // If running corporate mode and multiple candidates return, format candidate listings
-                if (currentMode === 'corp' && data.candidates && data.candidates.length > 0) {
-                    out.innerText = `Stage 1 complete. ${data.candidates.length} candidate indices isolated. Select verification node.`;
-                    badge.innerText = "Candidates Found";
-                    badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-crimsonGlow font-bold uppercase";
-                    
-                    deck.innerHTML = data.candidates.map(c => `
-                        <div onclick="requestDirectAudit('${c.crn}')" class="bg-canvas border border-zinc-800 hover:border-crimsonGlow p-2 rounded cursor-pointer transition-all flex justify-between items-center group">
-                            <div>
-                                <div class="text-xs font-bold text-white group-hover:text-crimsonGlow">${c.name}</div>
-                                <div class="text-[10px] text-zinc-500">CRN: ${c.crn}</div>
-                            </div>
-                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">${c.status}</span>
-                        </div>
-                    `).join('');
-                    logDebug(`Rendered search candidate node choices.`);
-                    return;
-                }
-
-                // Standard processing or direct mapping match execution
-                displayFinalReport(data);
-
+                out.innerText = data.intelligence_report || "No text data stream returned.";
+                badge.innerText = "Compiled";
+                badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-green-400 font-bold uppercase";
+                logDebug("Analytical report parsing completely finalized.");
             } catch (err) {
-                out.innerText = "Execution failed sequence loop. Verify context stream parameter anomalies.";
+                out.innerText = "Execution failed. View system debug logger panel for raw exception traces.";
                 badge.innerText = "Halted";
                 badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-crimsonDark text-white font-bold uppercase";
                 logDebug(err.message, true);
             }
         }
 
-        async function requestDirectAudit(crn) {
-            const out = document.getElementById("outputWindow");
-            const badge = document.getElementById("engineBadge");
-            out.innerText = `Piping secondary target verification down to specialized processor [CRN: ${crn}]...`;
-            logDebug(`Triggering secondary deep lookup against CRN node: ${crn}`);
+        async function executeCompanySearch() {
+            const query = document.getElementById("companySearchInput").value.trim();
+            if (!query) return;
+
+            const deck = document.getElementById("verificationResultsDeck");
+            deck.innerHTML = "<div class='text-xs text-zinc-600 animate-pulse font-mono'>Querying registry index matches...</div>";
+            deck.classList.remove("hidden");
+            logDebug(`Executing Stage 1 registry verification scan for: ${query}`);
 
             try {
-                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(crn)}&mode=corp`);
-                if (!res.ok) throw new Error(`Target Node connection fault: ${res.status}`);
+                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(query)}&mode=corp`);
+                if (!res.ok) throw new Error(`Registry connection dropped: ${res.status}`);
+                
                 const data = await res.json();
-                displayFinalReport(data);
-            } catch(err) {
-                out.innerText = "Forensic profile execution failed down chain loops.";
+                
+                // Route directly if backend returns instant profiling structures
+                if (data.fact_table && data.intelligence_report) {
+                    deck.innerHTML = "<div class='text-xs text-green-400 font-mono p-2'>Immediate match found. Printing profiling logs.</div>";
+                    renderFinalProfile(data);
+                    return;
+                }
+
+                const items = data.candidates || [];
+                if (items.length === 0) {
+                    deck.innerHTML = "<div class='text-xs text-crimsonGlow font-mono p-2'>Zero close matches returned by index.</div>";
+                    return;
+                }
+
+                deck.innerHTML = items.map(c => `
+                    <div onclick="executeCompanyIntelligence('${c.crn}')" class="bg-canvas border border-zinc-800 hover:border-crimsonGlow p-2 rounded cursor-pointer transition-all flex justify-between items-center group">
+                        <div>
+                            <div class="text-xs font-bold text-white group-hover:text-crimsonGlow">${c.name}</div>
+                            <div class="text-[10px] text-zinc-500">CRN: ${c.crn}</div>
+                        </div>
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">${c.status}</span>
+                    </div>
+                `).join('');
+                logDebug tracking (`Stage 1 parsed ${items.length} verification candidate nodes.`);
+            } catch (err) {
+                deck.innerHTML = "<div class='text-xs text-crimsonGlow font-mono p-2'>Search node crashed.</div>";
                 logDebug(err.message, true);
             }
         }
 
-        function displayFinalReport(data) {
+        async function executeCompanyIntelligence(crn) {
             const out = document.getElementById("outputWindow");
             const badge = document.getElementById("engineBadge");
-            const header = document.getElementById("outputHeader");
-
-            let outputText = "";
-            if (data.fact_table) {
-                outputText += `==================================================\n`;
-                outputText += `SYSTEM TARGET PROFILE: ${data.structured_data?.scope || data.fact_table.name || 'RESOLVED'}\n`;
-                outputText += `==================================================\n`;
-                outputText += `ENTITY NAME : ${data.fact_table.name}\n`;
-                outputText += `REGISTRY ID : ${data.fact_table.crn}\n`;
-                outputText += `STATUS CODE : ${data.fact_table.status}\n`;
-                outputText += `ADDRESS LOG : ${data.fact_table.address}\n`;
-                outputText += `--------------------------------------------------\n\n`;
-            }
-
-            outputText += data.intelligence_report || (typeof data === 'string' ? data : JSON.stringify(data, null, 2)) || "No analytical matrix resolved.";
-            out.innerText = outputText;
             
-            badge.innerText = "Compiled";
-            badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-green-400 font-bold uppercase";
-            logDebug("Telemetry processing complete. Analytical stream stabilized.");
-        }
-    </script>
-</body>
-</html>
+            out.innerText = `Executing Stage 2 profile extraction on target verified node [CRN: ${crn}]...\nStreaming metrics block through intelligence processor...`;
+            badge.innerText = "FORENSIC PROCESSOR // WORKING";
+            badge.className = "text-[9px] font-mono px-2 py-0.
