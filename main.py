@@ -229,7 +229,7 @@ async def serve_frontend(catchall: str = ""):
             with open(path, "r") as f:
                 return f.read()
                 
- from fastapi.staticfiles import StaticFiles
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 @app.get("/{catchall:path}")
