@@ -63,8 +63,7 @@ def get_companies_house_headers():
         return {}
     encoded = base64.b64encode(f"{COMPANIES_HOUSE_KEY}:".encode('utf-8')).decode('utf-8')
     return {"Authorization": f"Basic {encoded}"}
-
-@app.get("/", response_class=HTMLResponse)
+# === API ENDPOINTS ===
 
 @app.post("/api/legal-analysis")
 async def legal_analysis(req: LegalSearchRequest):
@@ -203,38 +202,13 @@ async def export_docx(req: LegalSearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 1. Mount the Next.js static asset folders with explicit hidden file access enabled
-if os.path.exists("_next"):
-    app.mount("/_next", StaticFiles(directory="_next", html=False, check_dir=False), name="next-assets")
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static-assets")
 
-# 2. Enhanced frontend server with catch-all routing for Next.js sub-pages
-@app.get("/{catchall:path}", response_class=HTMLResponse)
-async def serve_frontend(catchall: str = ""):
-    # If a user hits a sub-page route like /dashboard, check for dashboard.html or dashboard/index.html
-    paths_to_check = [
-        catchall,
-        f"{catchall}.html",
-        os.path.join(catchall, "index.html") if catchall else "index.html",
-        "index.html" # Fallback to main index for client-side routing
-    ]
-    
-    # Filter out empty paths or api prefixes so we don't accidentally intercept API calls
-    if catchall.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API route not found")
+# === FRONTEND ROUTING GATEWAY ===
 
-    for path in paths_to_check:
-        if path and os.path.exists(path) and os.path.isfile(path):
-            with open(path, "r") as f:
-                return f.read()
-                
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 @app.get("/{catchall:path}")
 async def serve_frontend(catchall: str = ""):
-    # Do not intercept any backend API endpoints
     if catchall.startswith("api/"):
         raise HTTPException(status_code=404, detail="API route not found")
         
