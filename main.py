@@ -226,9 +226,23 @@ async def master_intel(q: str = Query(..., min_length=1), mode: str = "corp"):
     else:
         raise HTTPException(status_code=400, detail="Invalid intelligence matrix mode configuration requested.")
 
-# === FRONTEND ROUTING GATEWAY ===
+# === FINAL FRONTEND ROUTING GATEWAY ===
 
 from fastapi.responses import FileResponse
+
+# Mount the static and next asset paths natively to the root so styles map instantly
+if os.path.exists("static_frontend/_next"):
+    app.mount("/_next", StaticFiles(directory="static_frontend/_next"), name="next_assets")
+if os.path.exists("static_frontend/static"):
+    app.mount("/static", StaticFiles(directory="static_frontend/static"), name="frontend_static_assets")
+
+@app.get("/")
+async def serve_root():
+    """Forcefully serve index.html as the primary landing page aesthetic"""
+    default_index = os.path.join("static_frontend", "index.html")
+    if os.path.exists(default_index):
+        return FileResponse(default_index)
+    raise HTTPException(status_code=500, detail="Root index.html missing from frontend assets.")
 
 @app.get("/{catchall:path}")
 async def serve_frontend(catchall: str = ""):
@@ -247,7 +261,6 @@ async def serve_frontend(catchall: str = ""):
     if os.path.exists(default_index):
         return FileResponse(default_index)
         
+    # Force log internal details to stdout before raising the exception
+    logger.error(f"Asset tree missing resolution target path: {catchall}")
     raise HTTPException(status_code=500, detail="Frontend asset tree desynchronized.")
-
-if os.path.exists("static_frontend/_next"):
-    app.mount("/_next", StaticFiles(directory="static_frontend/_next"), name="next_assets")
