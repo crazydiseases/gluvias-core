@@ -1,18 +1,27 @@
-FROM python:3.11-slim
+# === STAGE 1: COMPiLE FRONTEND ===
+FROM node:18-slim AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
 
+# === STAGE 2: BUILD UNiFiED SERVER ===
+FROM python:3.11-slim
 WORKDIR /app
 
-# Install basic OS system maintenance patches if needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    && rm -rf /lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy the dependency matrix first to leverage build caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy our unified system engine file
+# Copy backend files
 COPY main.py .
+
+# Copy compiled static assets from Stage 1 into the location expected by main.py
+COPY --from=frontend-builder /app/frontend/out ./frontend/out
 
 EXPOSE 8080
 
