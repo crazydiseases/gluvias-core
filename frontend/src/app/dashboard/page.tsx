@@ -9,7 +9,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [showExport, setShowExport] = useState(false);
 
-  const executePipeline = async () => {
+  const executePipeline = async () => { 
     if (!query.trim()) return;
     setLoading(true);
     setReport('');
