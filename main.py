@@ -226,48 +226,34 @@ async def master_intel(q: str = Query(..., min_length=1), mode: str = "corp"):
     else:
         raise HTTPException(status_code=400, detail="Invalid intelligence matrix mode configuration requested.")
 
-# === CORE INTERFACE MATRIX ===
+# === EXCLUSIVE INTERFACE MATRIX GATEWAY ===
 
 from fastapi.responses import FileResponse
 import os
 
-# 1. Mount the compiled Next.js assets first
-if os.path.exists("static_frontend/_next"):
-    app.mount("/_next", StaticFiles(directory="static_frontend/_next"), name="next_assets")
-if os.path.exists("static_frontend/static"):
-    app.mount("/static", StaticFiles(directory="static_frontend/static"), name="static_assets")
-
 @app.get("/")
 async def serve_root():
-    """Load the Next.js compiled entrypoint immediately"""
-    if os.path.exists("static_frontend/index.html"):
-        return FileResponse("static_frontend/index.html")
-    raise HTTPException(status_code=404, detail="Next.js static build index missing.")
+    """Force load the custom Crimson-glow index matrix directly"""
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
+    raise HTTPException(status_code=404, detail="Primary index interface asset missing.")
 
 @app.get("/dashboard")
 async def serve_dashboard():
-    """Route /dashboard requests to the Next.js engine as well"""
-    if os.path.exists("static_frontend/dashboard.html"):
-        return FileResponse("static_frontend/dashboard.html")
-    elif os.path.exists("static_frontend/index.html"):
-        return FileResponse("static_frontend/index.html")
-    raise HTTPException(status_code=404, detail="Dashboard build artifact missing.")
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
+    raise HTTPException(status_code=404, detail="Interface asset missing.")
 
 @app.get("/{catchall:path}")
 async def serve_frontend(catchall: str = ""):
     if catchall.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API path mismatch.")
+        raise HTTPException(status_code=404, detail="API route path missing.")
         
-    # Query Next.js built artifacts
-    file_path = os.path.join("static_frontend", catchall)
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        return FileResponse(file_path)
+    # Always prioritize your local loose asset files over the Next.js framework folder
+    if os.path.exists(catchall) and os.path.isfile(catchall):
+        return FileResponse(catchall)
         
-    html_fallback = f"{file_path}.html"
-    if os.path.exists(html_fallback) and os.path.isfile(html_fallback):
-        return FileResponse(html_fallback)
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
         
-    if os.path.exists("static_frontend/index.html"):
-        return FileResponse("static_frontend/index.html")
-        
-    raise HTTPException(status_code=500, detail="Frontend layer unresolved.")
+    raise HTTPException(status_code=500, detail="Frontend matrix routing collapsed.")
