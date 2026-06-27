@@ -230,37 +230,40 @@ async def master_intel(q: str = Query(..., min_length=1), mode: str = "corp"):
 
 from fastapi.responses import FileResponse
 
-# Mount the static and next asset paths natively to the root so styles map instantly
-if os.path.exists("static_frontend/_next"):
-    app.mount("/_next", StaticFiles(directory="static_frontend/_next"), name="next_assets")
-if os.path.exists("static_frontend/static"):
-    app.mount("/static", StaticFiles(directory="static_frontend/static"), name="frontend_static_assets")
+# Mount assets directly from the root directories where they exist
+if os.path.exists("_next"):
+    app.mount("/_next", StaticFiles(directory="_next"), name="next_assets")
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static_assets")
 
 @app.get("/")
 async def serve_root():
-    """Forcefully serve index.html as the primary landing page aesthetic"""
-    default_index = os.path.join("static_frontend", "index.html")
-    if os.path.exists(default_index):
-        return FileResponse(default_index)
-    raise HTTPException(status_code=500, detail="Root index.html missing from frontend assets.")
+    """Serve the real index.html directly from the root directory"""
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
+    raise HTTPException(status_code=404, detail="Root index.html file not found.")
+
+@app.get("/dashboard")
+async def serve_dashboard():
+    """Serve the dashboard page directly when requested"""
+    if os.path.exists("dashboard.html"):
+        return FileResponse("dashboard.html")
+    raise HTTPException(status_code=404, detail="dashboard.html file not found.")
 
 @app.get("/{catchall:path}")
 async def serve_frontend(catchall: str = ""):
     if catchall.startswith("api/"):
         raise HTTPException(status_code=404, detail="API route not found")
         
-    file_path = os.path.join("static_frontend", catchall)
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        return FileResponse(file_path)
+    # Look for files directly in the root directory
+    if os.path.exists(catchall) and os.path.isfile(catchall):
+        return FileResponse(catchall)
         
-    html_fallback = f"{file_path}.html"
+    html_fallback = f"{catchall}.html"
     if os.path.exists(html_fallback) and os.path.isfile(html_fallback):
         return FileResponse(html_fallback)
         
-    default_index = os.path.join("static_frontend", "index.html")
-    if os.path.exists(default_index):
-        return FileResponse(default_index)
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
         
-    # Force log internal details to stdout before raising the exception
-    logger.error(f"Asset tree missing resolution target path: {catchall}")
-    raise HTTPException(status_code=500, detail="Frontend asset tree desynchronized.")
+    raise HTTPException(status_code=500, detail="Frontend asset path unresolved.")
