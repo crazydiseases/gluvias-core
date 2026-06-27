@@ -231,39 +231,20 @@ async def master_intel(q: str = Query(..., min_length=1), mode: str = "corp"):
 from fastapi.responses import FileResponse
 import os
 
-# Mount the static Next.js compilation folders first
-if os.path.exists("static_frontend/_next"):
-    app.mount("/_next", StaticFiles(directory="static_frontend/_next"), name="next_assets")
-if os.path.exists("static_frontend/static"):
-    app.mount("/static", StaticFiles(directory="static_frontend/static"), name="static_assets")
-
 @app.get("/")
 async def serve_root():
-    # FORCE FastAPI to load the compiled Next.js bundle page first
-    if os.path.exists("static_frontend/index.html"):
-        return FileResponse("static_frontend/index.html")
-    # Backup fallback only
+    # Priority 1: Serve the original, comprehensive dashboard you love
+    if os.path.exists("dashboard.html"):
+        return FileResponse("dashboard.html")
     elif os.path.exists("index.html"):
         return FileResponse("index.html")
-    raise HTTPException(status_code=404, detail="System root interface file missing.")
-
-@app.get("/{catchall:path}")
-async def serve_frontend(catchall: str = ""):
-    if catchall.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API route not found")
-        
-    # Check if the requested file exists inside the Next.js build folder
-    file_path = os.path.join("static_frontend", catchall)
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        return FileResponse(file_path)
-        
-    # Check for exported HTML pages (.html) matching the path name
-    html_fallback = f"{file_path}.html"
-    if os.path.exists(html_fallback) and os.path.isfile(html_fallback):
-        return FileResponse(html_fallback)
-        
-    # Always default to the main Next.js entrypoint instead of loose root HTMLs
-    if os.path.exists("static_frontend/index.html"):
+    # Priority 2: Fall back to compiled Next.js assets if loose HTML is missing
+    elif os.path.exists("static_frontend/index.html"):
         return FileResponse("static_frontend/index.html")
-        
-    raise HTTPException(status_code=500, detail="Frontend path completely unresolved.")
+    raise HTTPException(status_code=404, detail="Interface entry point missing.")
+
+@app.get("/dashboard")
+async def serve_dashboard():
+    if os.path.exists("dashboard.html"):
+        return FileResponse("dashboard.html")
+    raise HTTPException(status_code=404, detail="Dashboard layout template not found.")
