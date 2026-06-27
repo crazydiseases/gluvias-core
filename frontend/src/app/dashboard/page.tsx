@@ -15,12 +15,28 @@ export default function Dashboard() {
     setReport('');
     try {
       const res = await fetch(`/api/master-intel?q=${encodeURIComponent(query)}&mode=${mode}`);
+      
+      // Let's protect against raw text errors (like 500 pages) crashing the JSON parser
+      const contentType = res.headers.get("content-type");
+      if (!res.ok) {
+        const errText = await res.text();
+        setReport(`Server returned error status (${res.status}): ${errText}`);
+        return;
+      }
+
       const data = await res.json();
-      setReport(data.intelligence_report || 'No data resolved.');
-      setScope(data.structured_data?.scope || mode.toUpperCase());
+      
+      // Handle it if the backend responds with a raw intelligence string or an object wrapper
+      if (typeof data === 'string') {
+        setReport(data);
+      } else {
+        setReport(data.intelligence_report || JSON.stringify(data) || 'No data resolved.');
+        setScope(data.structured_data?.scope || (data.fact_table?.name) || mode.toUpperCase());
+      }
       setShowExport(true);
     } catch (e) {
-      setReport('Failed execution sequence loop. Verify active workspace connection.');
+      console.error("Pipeline Exception Captured:", e);
+      setReport(`Execution sequence aborted internally. Error: ${e.message}`);
     } finally {
       setLoading(false);
     }
