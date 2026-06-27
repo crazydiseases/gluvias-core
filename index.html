@@ -179,15 +179,8 @@
                 if (!res.ok) throw new Error(`Registry connection dropped: ${res.status}`);
                 
                 const data = await res.json();
-                
-                // Route directly if backend returns instant profiling structures
-                if (data.fact_table && data.intelligence_report) {
-                    deck.innerHTML = "<div class='text-xs text-green-400 font-mono p-2'>Immediate match found. Printing profiling logs.</div>";
-                    renderFinalProfile(data);
-                    return;
-                }
-
                 const items = data.candidates || [];
+                
                 if (items.length === 0) {
                     deck.innerHTML = "<div class='text-xs text-crimsonGlow font-mono p-2'>Zero close matches returned by index.</div>";
                     return;
@@ -202,12 +195,49 @@
                         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">${c.status}</span>
                     </div>
                 `).join('');
-                logDebug tracking (`Stage 1 parsed ${items.length} verification candidate nodes.`);
+                logDebug(`Stage 1 parsed ${items.length} verification candidate nodes.`);
             } catch (err) {
                 deck.innerHTML = "<div class='text-xs text-crimsonGlow font-mono p-2'>Search node crashed.</div>";
                 logDebug(err.message, true);
             }
         }
+
+        async function executeCompanyIntelligence(crn) {
+            const out = document.getElementById("outputWindow");
+            const badge = document.getElementById("engineBadge");
+            
+            out.innerText = `Executing Stage 2 profile extraction on target verified node [CRN: ${crn}]...\nStreaming metrics block through Claude Sonnet intelligence processor...`;
+            badge.innerText = "FORENSIC PROCESSOR // WORKING";
+            badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-crimsonDark text-white font-bold uppercase animate-pulse";
+            logDebug(`Triggering Stage 2 deep extraction against node entity CRN: ${crn}`);
+
+            try {
+                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(crn)}&mode=corp`);
+                if (!res.ok) throw new Error(`Stage 2 Node Refused Payload: ${res.status}`);
+                
+                const data = await res.json();
+                
+                let outputText = `## VERIFIED CORPORATE META-PROFILE\n`;
+                if (data.fact_table) {
+                    outputText += `ENTITY NAME: ${data.fact_table.name}\n`;
+                    outputText += `REGISTRY ID: ${data.fact_table.crn}\n`;
+                    outputText += `STATUS CODE: ${data.fact_table.status}\n`;
+                    outputText += `LATEST REGISTERED ADDRESS: ${data.fact_table.address}\n\n`;
+                }
+                outputText += data.intelligence_report || "No deep audit content generated.";
+                
+                out.innerText = outputText;
+                badge.innerText = "Audit Finalized";
+                badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-green-400 font-bold uppercase";
+                logDebug(`Stage 2 data synchronization completely linked.`);
+            } catch (err) {
+                out.innerText = "Forensic execution halted due to ingestion breakdown.";
+                badge.innerText = "Error";
+                badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-crimsonDark text-white font-bold uppercase";
+                logDebug(err.message, true);
+            }
+        }
+    </script>
 
         async function executeCompanyIntelligence(crn) {
             const out = document.getElementById("outputWindow");
