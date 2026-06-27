@@ -184,8 +184,7 @@ async def company_intelligence(crn: str = Query(..., min_length=1)):
                 Provide a deeply comprehensive, rich, and fluid prose narrative outlining chronological findings, structural transitions, and historical movements. 
 
                 CRITICAL ENFORCEMENT RULE: Never generalize, mask, or abstract personal data. Avoid vague statements like "some members left and another joined." You must track and name every individual, director, and corporate entity by their literal, official legal names as extracted from the registry data stream.""",
-                messages=[{"role": "user", "content": forensic_payload}]
-            )
+                messages=[{"role": "user", "content": str(forensic_payload).strip()}]            )
             
             return {
                 "fact_table": {"name": comp_name, "crn": crn, "status": str(profile.get('company_status','')).upper(), "address": clean_address},
