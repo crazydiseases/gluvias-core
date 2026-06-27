@@ -211,10 +211,12 @@ async def master_intel(q: str = Query(..., min_length=1), mode: str = "corp"):
         search_results = await company_search(q=q)
         candidates = search_results.get("candidates", [])
         
-        if not candidates:
+        if not candidates or len(candidates) == 0:
             return {"fact_table": None, "intelligence_report": "No matching corporate entities identified in the state registry."}
             
-        top_crn = candidates["crn"]
+        # Explicitly grab the first item index here
+        first_candidate = candidates
+        top_crn = first_candidate["crn"]
         return await company_intelligence(crn=top_crn)
         
     elif mode == "legal":
