@@ -87,7 +87,6 @@
 
         function logDebug(message, isError = false) {
             const el = document.getElementById("debugWindow");
-            // FIXED: Extracted clean, safe ISO string tracking variables without using the broken substring on arrays method
             const rawDate = new Date();
             const timestamp = rawDate.toISOString().replace('T', ' ').slice(0, 19);
             if (isError) {
@@ -96,6 +95,45 @@
                 el.innerHTML = `<span class="text-zinc-400">[TELEMETRY ${timestamp}]: ${message}</span>`;
             }
         }
+
+        async function executeLegalAnalysis() {
+            const query = document.getElementById("queryInput").value.trim();
+            if (!query) return;
+
+            const out = document.getElementById("outputWindow");
+            const badge = document.getElementById("engineBadge");
+            
+            out.innerText = "Initializing live advisory extraction pipeline via Claude Sonnet...";
+            badge.innerText = "SONNET // RUNNING";
+            badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-crimsonDark text-white font-bold uppercase animate-pulse";
+            logDebug("Piping query stream directly to intelligence core.");
+
+            try {
+                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(query)}&mode=legal`);
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+
+                const data = await res.json();
+                out.innerText = data.intelligence_report || "No text data stream returned.";
+                badge.innerText = "Compiled";
+                badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-green-400 font-bold uppercase";
+                logDebug("Analytical report parsing completely finalized.");
+            } catch (err) {
+                out.innerText = "Execution failed. View system debug logger panel for raw exception traces.";
+                badge.innerText = "Halted";
+                badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-crimsonDark text-white font-bold uppercase";
+                logDebug(err.message, true);
+            }
+        }
+
+        async function executeCompanySearch() {
+            const query = document.getElementById("companySearchInput").value.trim();
+            if (!query) return;
+
+            const deck = document.getElementById("verificationResultsDeck");
+            deck.innerHTML = "<div class='text-xs text-zinc-600 animate-pulse font-mono'>Querying registry index matches...</div>";
+            deck.classList.remove("hidden");
+            logDebug(`Executing Stage 1 registry verification scan for: ${query}`);
 
         async function executeLegalAnalysis() {
             const query = document.getElementById("queryInput").value.trim();
