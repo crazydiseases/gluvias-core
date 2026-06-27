@@ -19,4 +19,5 @@ COPY index.html .
 COPY --from=frontend-builder /app/frontend/out ./static_frontend
 
 EXPOSE 8080
-CMD ["uvicorn", "main.py:app", "--host", "0.0.0.0", "--port", "8080"]
+# Change from: CMD ["uvicorn", "main.py:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
