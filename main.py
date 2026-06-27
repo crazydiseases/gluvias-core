@@ -203,10 +203,11 @@ async def export_docx(req: LegalSearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 1. Mount the Next.js static asset folders (_next/static, etc.) if they exist in root
-for folder in ["_next", "static"]:
-    if os.path.exists(folder):
-        app.mount(f"/{folder}", StaticFiles(directory=folder), name=folder)
+# 1. Mount the Next.js static asset folders with explicit hidden file access enabled
+if os.path.exists("_next"):
+    app.mount("/_next", StaticFiles(directory="_next", html=False, check_dir=False), name="next-assets")
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static-assets")
 
 # 2. Enhanced frontend server with catch-all routing for Next.js sub-pages
 @app.get("/{catchall:path}", response_class=HTMLResponse)
