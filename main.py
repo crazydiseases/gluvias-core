@@ -64,12 +64,6 @@ def get_companies_house_headers():
     return {"Authorization": f"Basic {encoded}"}
 
 @app.get("/", response_class=HTMLResponse)
-async def serve_frontend():
-    for path in ["index.html", "backend/index.html"]:
-        if os.path.exists(path):
-            with open(path, "r") as f:
-                return f.read()
-    raise HTTPException(status_code=500, detail="Frontend asset tree desynchronized. File missing.")
 
 @app.post("/api/legal-analysis")
 async def legal_analysis(req: LegalSearchRequest):
@@ -207,3 +201,35 @@ async def export_docx(req: LegalSearchRequest):
         return {"status": "SUCCESS"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# 1. Mount the Next.js static asset folders (_next/static, etc.) if they exist in root
+for folder in ["_next", "static"]:
+    if os.path.exists(folder):
+        app.mount(f"/{folder}", StaticFiles(directory=folder), name=folder)
+
+# 2. Enhanced frontend server with catch-all routing for Next.js sub-pages
+@app.get("/{catchall:path}", response_class=HTMLResponse)
+async def serve_frontend(catchall: str = ""):
+    # If a user hits a sub-page route like /dashboard, check for dashboard.html or dashboard/index.html
+    paths_to_check = [
+        catchall,
+        f"{catchall}.html",
+        os.path.join(catchall, "index.html") if catchall else "index.html",
+        "index.html" # Fallback to main index for client-side routing
+    ]
+    
+    # Filter out empty paths or api prefixes so we don't accidentally intercept API calls
+    if catchall.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API route not found")
+
+    for path in paths_to_check:
+        if path and os.path.exists(path) and os.path.isfile(path):
+            with open(path, "r") as f:
+                return f.read()
+                
+    # Ultimate fallback to main index.html if it exists
+    if os.path.exists("index.html"):
+        with open("index.html", "r") as f:
+            return f.read()
+            
+    raise HTTPException(status_code=500, detail="Frontend asset tree desynchronized. File missing.")
