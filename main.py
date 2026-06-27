@@ -202,6 +202,27 @@ async def export_docx(req: LegalSearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/master-intel")
+async def master_intel(q: str = Query(..., min_length=1), mode: str = "corp"):
+    """Unified Orchestration Hub mapping frontend sub-queries to internal handlers"""
+    logger.info(f"Incoming Master Intel stream context tracking query: '{q}' in mode: '{mode}'")
+    
+    if mode == "corp":
+        search_results = await company_search(q=q)
+        candidates = search_results.get("candidates", [])
+        
+        if not candidates:
+            return {"fact_table": None, "intelligence_report": "No matching corporate entities identified in the state registry."}
+            
+        top_crn = candidates["crn"]
+        return await company_intelligence(crn=top_crn)
+        
+    elif mode == "legal":
+        req_wrapper = LegalSearchRequest(query=q)
+        return await legal_analysis(req=req_wrapper)
+        
+    else:
+        raise HTTPException(status_code=400, detail="Invalid intelligence matrix mode configuration requested.")
 
 # === FRONTEND ROUTING GATEWAY ===
 
