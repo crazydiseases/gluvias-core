@@ -87,7 +87,8 @@
 
         function logDebug(message, isError = false) {
             const el = document.getElementById("debugWindow");
-            const timestamp = new Date().toISOString().split('T').substring(0, 8);
+            // FIXED: Using toLocaleTimeString to guarantee a safe string format
+            const timestamp = new Date().toLocaleTimeString();
             if (isError) {
                 el.innerHTML = `<span class="text-crimsonGlow font-bold">[CRITICAL_ERR ${timestamp}]: ${message}</span>`;
             } else {
@@ -102,22 +103,19 @@
             const out = document.getElementById("outputWindow");
             const badge = document.getElementById("engineBadge");
             
-            out.innerText = "Initializing live advisory extraction pipeline via Claude Sonnet 4.6...";
-            badge.innerText = "SONNET 4.6 // RUNNING";
+            out.innerText = "Initializing live advisory extraction pipeline via Claude...";
+            badge.innerText = "ENGINE // RUNNING";
             badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-crimsonDark text-white font-bold uppercase animate-pulse";
-            logDebug("Piping query stream directly to Sonnet 4.6 cluster.");
+            logDebug("Piping query stream directly to unified intelligence core.");
 
             try {
-                const res = await fetch(`${API_BASE}/api/legal-analysis`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query: query })
-                });
+                // Route directly to your central intelligence engine
+                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(query)}&mode=legal`);
 
                 if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
 
                 const data = await res.json();
-                out.innerText = data.analysis_report || "No text data stream returned.";
+                out.innerText = data.intelligence_report || "No text data stream returned.";
                 badge.innerText = "Compiled";
                 badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-green-400 font-bold uppercase";
                 logDebug("Analytical report parsing completely finalized.");
@@ -139,12 +137,27 @@
             logDebug(`Executing Stage 1 registry verification scan for: ${query}`);
 
             try {
-                const res = await fetch(`${API_BASE}/api/company-search?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(query)}&mode=corp`);
                 if (!res.ok) throw new Error(`Registry connection dropped: ${res.status}`);
                 
                 const data = await res.json();
-                const items = data.candidates || [];
                 
+                // Handle it gracefully if the backend returns the immediate report wrapper
+                if (data.fact_table && data.intelligence_report) {
+                    deck.innerHTML = `<div class='text-xs text-green-400 font-mono p-2'>Direct identification success. Loading output data streams...</div>`;
+                    const out = document.getElementById("outputWindow");
+                    let outputText = `## VERIFIED CORPORATE META-PROFILE\n`;
+                    outputText += `ENTITY NAME: ${data.fact_table.name}\n`;
+                    outputText += `REGISTRY ID: ${data.fact_table.crn}\n`;
+                    outputText += `STATUS CODE: ${data.fact_table.status}\n`;
+                    outputText += `REGISTRATION DATE/AGE: ${data.fact_table.age || 'N/A'}\n`;
+                    outputText += `LATEST REGISTERED ADDRESS: ${data.fact_table.address}\n\n`;
+                    outputText += data.intelligence_report;
+                    out.innerText = outputText;
+                    return;
+                }
+
+                const items = data.candidates || [];
                 if (items.length === 0) {
                     deck.innerHTML = "<div class='text-xs text-crimsonGlow font-mono p-2'>Zero close matches returned by index.</div>";
                     return;
@@ -170,13 +183,13 @@
             const out = document.getElementById("outputWindow");
             const badge = document.getElementById("engineBadge");
             
-            out.innerText = `Executing Stage 2 profile extraction on target verified node [CRN: ${crn}]...\nStreaming metrics block through Claude Sonnet 4.6 intelligence processor...`;
+            out.innerText = `Executing Stage 2 profile extraction on target verified node [CRN: ${crn}]...\nStreaming metrics block through intelligence processor...`;
             badge.innerText = "FORENSIC PROCESSOR // WORKING";
             badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-crimsonDark text-white font-bold uppercase animate-pulse";
             logDebug(`Triggering Stage 2 deep extraction against node entity CRN: ${crn}`);
 
             try {
-                const res = await fetch(`${API_BASE}/api/company-intelligence?crn=${encodeURIComponent(crn)}`);
+                const res = await fetch(`${API_BASE}/api/master-intel?q=${encodeURIComponent(crn)}&mode=corp`);
                 if (!res.ok) throw new Error(`Stage 2 Node Refused Payload: ${res.status}`);
                 
                 const data = await res.json();
